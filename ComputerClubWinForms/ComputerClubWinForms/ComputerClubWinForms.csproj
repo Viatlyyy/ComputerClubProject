@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Update="Forms\AuthPage.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\AuthPage.Designer.cs"><DependentUpon>AuthPage.cs</DependentUpon></Compile>
+    <Compile Update="Forms\MainForm.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\MainForm.Designer.cs"><DependentUpon>MainForm.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ClientPage.cs"><SubType>UserControl</SubType></Compile>
+    <Compile Update="Forms\ClientPage.Designer.cs"><DependentUpon>ClientPage.cs</DependentUpon></Compile>
+    <Compile Update="Forms\SessionPage.cs"><SubType>UserControl</SubType></Compile>
+    <Compile Update="Forms\SessionPage.Designer.cs"><DependentUpon>SessionPage.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ReportPage.cs"><SubType>UserControl</SubType></Compile>
+    <Compile Update="Forms\ReportPage.Designer.cs"><DependentUpon>ReportPage.cs</DependentUpon></Compile>
+    <Compile Update="Forms\SettingsPage.cs"><SubType>UserControl</SubType></Compile>
+    <Compile Update="Forms\SettingsPage.Designer.cs"><DependentUpon>SettingsPage.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ClientEditDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\ClientEditDialog.Designer.cs"><DependentUpon>ClientEditDialog.cs</DependentUpon></Compile>
+    <Compile Update="Forms\BookingDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\BookingDialog.Designer.cs"><DependentUpon>BookingDialog.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ExtendSessionDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\ExtendSessionDialog.Designer.cs"><DependentUpon>ExtendSessionDialog.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ReceiptDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\ReceiptDialog.Designer.cs"><DependentUpon>ReceiptDialog.cs</DependentUpon></Compile>
+    <Compile Update="Forms\ComparePeriodDialog.cs"><SubType>Form</SubType></Compile>
+    <Compile Update="Forms\ComparePeriodDialog.Designer.cs"><DependentUpon>ComparePeriodDialog.cs</DependentUpon></Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Npgsql" Version="8.0.3" />
+  </ItemGroup>
+
+</Project>
