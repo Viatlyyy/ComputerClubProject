@@ -14,10 +14,17 @@ namespace ComputerClubWinForms.Forms
         private ClientManager? _clientManager;
         private SessionManager? _sessionManager;
         private bool _isInitialized;
+        private string _lastAutoCompletionSummary = string.Empty;
+        private bool _clientStatisticsNeedRefresh;
+        private readonly Dictionary<int, bool> _computerAvailability = new();
+
+        public event EventHandler? ClientsChanged;
+        internal event EventHandler? SessionStatisticsChanged;
 
         public SessionPage()
         {
             InitializeComponent();
+            ArrangePanels();
             EnsureSessionGridColumns();
 
            
@@ -47,8 +54,10 @@ namespace ComputerClubWinForms.Forms
             ReloadClients();
             ReloadComputers();
             RefreshAll();
-            _timer.Start();
+            StartRefreshTimer();
         }
+
+        internal void StartRefreshTimer() => _timer.Start();
 
         private void LoadDesignPreview()
         {
@@ -151,42 +160,124 @@ namespace ComputerClubWinForms.Forms
                 return;
 
             var selectedId = SelectedClientId;
-            var clients = _clientManager.GetAllClients();
+            var clients = _clientManager.GetAllClients(_txtClientSearch.Text);
             _cmbClients.DataSource = clients;
             _cmbClients.DisplayMember = nameof(Client.FullName);
             _cmbClients.ValueMember = nameof(Client.Id);
 
-            if (selectedId.HasValue)
+            if (selectedId.HasValue && clients.Any(c => c.Id == selectedId.Value))
                 _cmbClients.SelectedValue = selectedId.Value;
 
-            _btnStartDirect.Enabled = clients.Count > 0;
-            _btnNewBooking.Enabled = clients.Count > 0;
+            _lblClientHint.Text = clients.Count == 0
+                ? "Клиент не найден. Нажмите «Добавить клиента»."
+                : string.Empty;
+            UpdateActionButtons();
         }
 
-        private void ReloadComputers()
+        public void ReloadComputers()
         {
             if (_sessionManager is null)
                 return;
 
+            var selectedNumber = SelectedComputerNumber;
             var computers = _sessionManager.GetComputers();
             _cmbComputers.DataSource = computers;
             _cmbComputers.DisplayMember = nameof(Computer.Number);
             _cmbComputers.ValueMember = nameof(Computer.Number);
+
+            if (selectedNumber.HasValue && computers.Any(c => c.Number == selectedNumber.Value))
+                _cmbComputers.SelectedValue = selectedNumber.Value;
+            UpdateActionButtons();
+            RefreshComputerMap();
+        }
+
+        private void OnClientSearchChanged(object? sender, EventArgs e)
+        {
+            try { ReloadClients(); }
+            catch (Exception ex)
+            {
+                _cmbClients.DataSource = null;
+                UpdateActionButtons();
+                _lblClientHint.Text = "Не удалось найти клиентов. Проверьте соединение с БД.";
+                ShowResult(false, "Ошибка поиска: " + ex.Message);
+            }
+        }
+
+        private void OnClientFormat(object? sender, ListControlConvertEventArgs e)
+        {
+            if (e.ListItem is Client client)
+                e.Value = $"{client.FullName} — {client.Phone}";
+        }
+
+        private void OnSelectionChanged(object? sender, EventArgs e)
+        {
+            UpdateActionButtons();
+            UpdateComputerMapSelection();
+        }
+
+        private void OnPageSizeChanged(object? sender, EventArgs e) => ArrangePanels();
+
+        private void ArrangePanels()
+        {
+            if (_mapGroup is null || _editorPanel is null) return;
+            var scale = DeviceDpi / 96F;
+            var gap = (int)Math.Round(8 * scale);
+            var width = Math.Max(0, ClientSize.Width - Padding.Horizontal);
+            var editorHeight = (int)Math.Round(104 * scale);
+            var mapHeight = (int)Math.Round(144 * scale);
+            var minimumTableHeight = (int)Math.Round(122 * scale);
+            _editorPanel.SetBounds(Padding.Left, Padding.Top, width, editorHeight);
+            var activeTop = _editorPanel.Bottom + gap;
+            var mapTop = ClientSize.Height - Padding.Bottom - mapHeight;
+            var tablesHeight = Math.Max(2 * minimumTableHeight, mapTop - activeTop - 2 * gap);
+            var activeHeight = tablesHeight / 2;
+            _activeGroup.SetBounds(Padding.Left, activeTop, width, activeHeight);
+            _bookingGroup.SetBounds(Padding.Left, _activeGroup.Bottom + gap, width, tablesHeight - activeHeight);
+            _mapGroup.SetBounds(Padding.Left, _bookingGroup.Bottom + gap, width, mapHeight);
+            LayoutComputerMapButtons();
+        }
+
+        private void UpdateActionButtons()
+        {
+            var canStart = _clientManager is not null && _sessionManager is not null
+                && SelectedClientId.HasValue && SelectedComputerNumber.HasValue;
+            _btnStartDirect.Enabled = canStart;
+            _btnNewBooking.Enabled = canStart;
+        }
+
+        private void OnAddClientClick(object? sender, EventArgs e) => CreateClient();
+
+        private void CreateClient()
+        {
+            if (_clientManager is null)
+                return;
+            using var dialog = new ClientEditDialog();
+            if (dialog.ShowDialog(this) != DialogResult.OK)
+                return;
+            if (!_clientManager.AddClient(dialog.Client))
+            {
+                ShowResult(false, _clientManager.LastMessage);
+                return;
+            }
+            _txtClientSearch.Clear();
+            ReloadClients();
+            _cmbClients.SelectedValue = dialog.Client.Id;
+            UpdateActionButtons();
+            ClientsChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void RefreshAll()
         {
             RefreshActiveSessions();
             RefreshBookings();
-            RefreshComputerMap();
         }
 
         private void SessionTimer_Tick(object? sender, EventArgs e)
         {
-            RefreshActiveSessions();
+            RefreshActiveSessions(completeExpired: true);
         }
 
-        private void RefreshActiveSessions()
+        private void RefreshActiveSessions(bool completeExpired = false)
         {
             if (_sessionManager is null)
                 return;
@@ -194,15 +285,66 @@ namespace ComputerClubWinForms.Forms
             try
             {
                 var sessions = _sessionManager.GetActiveSessions();
+                if (completeExpired)
+                {
+                    var expiredFound = CompleteExpiredSessions(_sessionManager, sessions);
+                    if (_clientStatisticsNeedRefresh)
+                    {
+                        SessionStatisticsChanged?.Invoke(this, EventArgs.Empty);
+                        _clientStatisticsNeedRefresh = false;
+                    }
+                    if (!Visible)
+                        return;
+                    if (expiredFound)
+                        sessions = _sessionManager.GetActiveSessions();
+                }
                 ShowActiveSessions(sessions);
                 RefreshComputerMap();
             }
             catch (Exception ex)
             {
+                if (completeExpired)
+                {
+                    _activeGroup.Text = "Активные сеансы — не удалось обновить данные, повторяем…";
+                    return;
+                }
                 _timer.Stop();
                 MessageBox.Show($"Не удалось обновить список активных сеансов. Проверьте соединение. {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 _timer.Start();
             }
+        }
+
+        private bool CompleteExpiredSessions(SessionManager manager, List<Session> sessions)
+        {
+            var cutoff = DateTime.Now;
+            var expiredFound = false;
+            var completedCount = 0;
+            var total = 0m;
+            var hasFailure = false;
+            foreach (var session in sessions.Where(session => session.PlannedEndTime <= cutoff))
+            {
+                expiredFound = true;
+                var completed = manager.CompleteExpiredSession(session.Id, cutoff);
+                if (completed is not null)
+                {
+                    completedCount++;
+                    total += completed.TotalCost;
+                }
+                else if (manager.LastMessage.Length > 0)
+                {
+                    hasFailure = true;
+                }
+            }
+            if (completedCount > 0)
+            {
+                _lastAutoCompletionSummary = $"Автоматически завершено: {completedCount}, сумма: {total:N2} руб.";
+                _clientStatisticsNeedRefresh = true;
+            }
+            var status = hasFailure ? "Не удалось закрыть сеанс, повторяем…" : _lastAutoCompletionSummary;
+            var title = status.Length == 0 ? "Активные сеансы" : $"Активные сеансы — {status}";
+            if (_activeGroup.Text != title)
+                _activeGroup.Text = title;
+            return expiredFound;
         }
 
         private void RefreshBookings()
@@ -223,6 +365,11 @@ namespace ComputerClubWinForms.Forms
         public void ShowActiveSessions(List<Session> sessions)
         {
             EnsureSessionGridColumns();
+            var hadDataSource = _gridActiveSessions.DataSource is not null;
+            var selectedId = GetSelectedActiveSessionRow()?.Id;
+            var column = _gridActiveSessions.CurrentCell?.ColumnIndex ?? 0;
+            var firstRow = _gridActiveSessions.FirstDisplayedScrollingRowIndex;
+            var horizontalOffset = _gridActiveSessions.HorizontalScrollingOffset;
             _gridActiveSessions.DataSource = null;
             _gridActiveSessions.DataSource = sessions.Select(s => new ActiveSessionRow
             {
@@ -234,11 +381,31 @@ namespace ComputerClubWinForms.Forms
                 Remaining = FormatTimeSpan(s.RemainingTime),
                 IsExpired = s.RemainingTime.TotalSeconds <= 0
             }).ToList();
+            if (hadDataSource)
+            {
+                _gridActiveSessions.CurrentCell = null;
+                _gridActiveSessions.ClearSelection();
+                var selectedRow = _gridActiveSessions.Rows.Cast<DataGridViewRow>()
+                    .FirstOrDefault(row => row.DataBoundItem is ActiveSessionRow session && session.Id == selectedId);
+                if (selectedRow is not null)
+                {
+                    _gridActiveSessions.CurrentCell = selectedRow.Cells[column];
+                    selectedRow.Selected = true;
+                }
+                if (firstRow >= 0 && _gridActiveSessions.Rows.Count > 0)
+                    _gridActiveSessions.FirstDisplayedScrollingRowIndex = Math.Min(firstRow, _gridActiveSessions.Rows.Count - 1);
+                _gridActiveSessions.HorizontalScrollingOffset = horizontalOffset;
+            }
         }
 
         public void ShowBookings(List<Booking> bookings)
         {
             EnsureSessionGridColumns();
+            var hadDataSource = _gridBookings.DataSource is not null;
+            var selectedId = GetSelectedBookingRow()?.Id;
+            var column = _gridBookings.CurrentCell?.ColumnIndex ?? 0;
+            var firstRow = _gridBookings.FirstDisplayedScrollingRowIndex;
+            var horizontalOffset = _gridBookings.HorizontalScrollingOffset;
             _gridBookings.DataSource = null;
             _gridBookings.DataSource = bookings.Select(b => new BookingRow
             {
@@ -249,16 +416,81 @@ namespace ComputerClubWinForms.Forms
                 End = b.PlannedEnd.ToString("dd.MM.yyyy HH:mm"),
                 DurationMinutes = (int)b.Duration.TotalMinutes
             }).ToList();
+            if (hadDataSource)
+            {
+                _gridBookings.CurrentCell = null;
+                _gridBookings.ClearSelection();
+                var selectedRow = _gridBookings.Rows.Cast<DataGridViewRow>()
+                    .FirstOrDefault(row => row.DataBoundItem is BookingRow booking && booking.Id == selectedId);
+                if (selectedRow is not null)
+                {
+                    _gridBookings.CurrentCell = selectedRow.Cells[column];
+                    selectedRow.Selected = true;
+                }
+                if (firstRow >= 0 && _gridBookings.Rows.Count > 0)
+                    _gridBookings.FirstDisplayedScrollingRowIndex = Math.Min(firstRow, _gridBookings.Rows.Count - 1);
+                _gridBookings.HorizontalScrollingOffset = horizontalOffset;
+            }
         }
 
         private void RefreshComputerMap()
         {
-            _computerMap.SuspendLayout();
-            _computerMap.Controls.Clear();
-
             var computers = _sessionManager is null
                 ? Enumerable.Range(1, 12).Select(number => new Computer { Number = number, Name = $"Компьютер №{number}", IsActive = true }).ToList()
                 : _sessionManager.GetComputers();
+            var buttons = _computerMap.Controls.OfType<Button>().ToDictionary(button => (int)button.Tag!);
+            var listChanged = !buttons.Keys.SequenceEqual(computers.Select(computer => computer.Number));
+            var scroll = _computerMap.AutoScrollPosition;
+            if (listChanged)
+            {
+                var numbers = computers.Select(computer => computer.Number).ToHashSet();
+                _computerMap.SuspendLayout();
+                try
+                {
+                    foreach (var number in buttons.Keys.Where(number => !numbers.Contains(number)).ToList())
+                    {
+                        var removed = buttons[number];
+                        _computerMap.Controls.Remove(removed);
+                        removed.Dispose();
+                        buttons.Remove(number);
+                        _computerAvailability.Remove(number);
+                    }
+                    for (var index = 0; index < computers.Count; index++)
+                    {
+                        var number = computers[index].Number;
+                        if (!buttons.TryGetValue(number, out var button))
+                        {
+                            button = new Button { Text = $"ПК {number}", Tag = number };
+                            button.Click += OnComputerButtonClick;
+                            _computerMap.Controls.Add(button);
+                            buttons.Add(number, button);
+                            _computerAvailability.Remove(number);
+                        }
+                        if (button.TabIndex != index)
+                            button.TabIndex = index;
+                        if (_computerMap.Controls.GetChildIndex(button) != index)
+                            _computerMap.Controls.SetChildIndex(button, index);
+                    }
+                }
+                finally { _computerMap.ResumeLayout(); }
+            }
+
+            if (!_cmbComputers.Items.Cast<Computer>().Select(c => c.Number).SequenceEqual(computers.Select(c => c.Number)))
+            {
+                var selectedNumber = SelectedComputerNumber;
+                _cmbComputers.DataSource = computers;
+                _cmbComputers.DisplayMember = nameof(Computer.Number);
+                _cmbComputers.ValueMember = nameof(Computer.Number);
+                if (selectedNumber.HasValue && computers.Any(c => c.Number == selectedNumber.Value))
+                    _cmbComputers.SelectedValue = selectedNumber.Value;
+                UpdateActionButtons();
+            }
+
+            var mapTitle = computers.Count == 0
+                ? "В базе данных нет компьютеров. Добавьте записи в таблицу Computers."
+                : "Доступность сейчас: зелёный — свободен, красный — занят или забронирован";
+            if (_mapGroup.Text != mapTitle)
+                _mapGroup.Text = mapTitle;
 
             foreach (var computer in computers)
             {
@@ -266,28 +498,51 @@ namespace ComputerClubWinForms.Forms
                 if (_sessionManager is null && (computer.Number == 3 || computer.Number == 5))
                     isAvailableNow = false;
 
-                const int buttonWidth = 82;
-                const int buttonHeight = 46;
-                const int spacing = 10;
-                const int startOffset = 8;
-
-                var index = _computerMap.Controls.Count;
-                var columns = Math.Max(1, (_computerMap.ClientSize.Width - startOffset) / (buttonWidth + spacing));
-                var row = index / columns;
-                var column = index % columns;
-
-                var button = new Button();
-                button.Text = $"ПК {computer.Number}";
-                button.Size = new Size(buttonWidth, buttonHeight);
-                button.Location = new Point(startOffset + column * (buttonWidth + spacing), startOffset + row * (buttonHeight + spacing));
-                button.BackColor = isAvailableNow ? Color.LightGreen : Color.LightCoral;
-                button.UseVisualStyleBackColor = false;
-                button.Tag = computer.Number;
-                button.Click += OnComputerButtonClick;
-                _computerMap.Controls.Add(button);
+                var button = buttons[computer.Number];
+                var selected = computer.Number == SelectedComputerNumber;
+                if (!_computerAvailability.TryGetValue(computer.Number, out var wasAvailable)
+                    || wasAvailable != isAvailableNow
+                    || button.FlatStyle != (selected ? FlatStyle.Popup : FlatStyle.Standard))
+                    UiTheme.ComputerButton(button, isAvailableNow, selected);
+                _computerAvailability[computer.Number] = isAvailableNow;
             }
 
-            _computerMap.ResumeLayout();
+            if (listChanged)
+            {
+                LayoutComputerMapButtons();
+                _computerMap.AutoScrollPosition = new Point(-scroll.X, -scroll.Y);
+            }
+        }
+
+        private void LayoutComputerMapButtons()
+        {
+            if (_computerMap is null) return;
+            var scale = DeviceDpi / 96F;
+            var buttonWidth = (int)Math.Round(92 * scale);
+            var buttonHeight = (int)Math.Round(46 * scale);
+            var spacing = (int)Math.Round(8 * scale);
+            var availableWidth = Math.Max(buttonWidth, _computerMap.ClientSize.Width - SystemInformation.VerticalScrollBarWidth);
+            var columns = Math.Max(1, (availableWidth + spacing) / (buttonWidth + spacing));
+            var scroll = _computerMap.AutoScrollPosition;
+            for (var index = 0; index < _computerMap.Controls.Count; index++)
+            {
+                var button = _computerMap.Controls[index];
+                var bounds = new Rectangle(scroll.X + index % columns * (buttonWidth + spacing), scroll.Y + index / columns * (buttonHeight + spacing), buttonWidth, buttonHeight);
+                if (button.Bounds != bounds)
+                    button.Bounds = bounds;
+            }
+        }
+
+        private void UpdateComputerMapSelection()
+        {
+            if (_computerMap is null) return;
+            foreach (Control control in _computerMap.Controls)
+            {
+                if (control is Button button && button.Tag is int number
+                    && _computerAvailability.TryGetValue(number, out var available)
+                    && button.FlatStyle != (number == SelectedComputerNumber ? FlatStyle.Popup : FlatStyle.Standard))
+                    UiTheme.ComputerButton(button, available, number == SelectedComputerNumber);
+            }
         }
 
         private void OnComputerButtonClick(object? sender, EventArgs e)

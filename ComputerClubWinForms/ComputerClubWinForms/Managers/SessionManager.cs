@@ -59,14 +59,16 @@ public class SessionManager
         try
         {
             using var connection = _db.CreateConnection();
-            if (_clientManager.GetClientById(connection, null, clientId) is null)
+            using var transaction = connection.BeginTransaction();
+            if (_clientManager.GetClientById(connection, transaction, clientId) is null)
                 return SetMessage(false, "Клиент не найден");
-            if (!ComputerExists(connection, null, computerNumber))
+            if (!ComputerExists(connection, transaction, computerNumber))
                 return SetMessage(false, "Компьютер не найден");
-            if (!IsTimeSlotAvailable(connection, null, start, duration, computerNumber, null, null))
+            if (!IsTimeSlotAvailable(connection, transaction, start, duration, computerNumber, null, null))
                 return SetMessage(false, $"Компьютер №{computerNumber} уже забронирован на это время. Выберите другое время или компьютер");
 
             using var command = connection.CreateCommand();
+            command.Transaction = transaction;
             command.CommandText = """
                 INSERT INTO Bookings(ClientId, ComputerNumber, PlannedStart, DurationMinutes, Status, CreatedAt)
                 VALUES (@clientId, @computer, @start, @duration, 'active', @createdAt)
@@ -77,7 +79,7 @@ public class SessionManager
             command.Parameters.AddWithValue("@duration", ToMinutes(duration));
             command.Parameters.AddWithValue("@createdAt", ToDbDate(DateTime.Now));
             command.ExecuteNonQuery();
-
+            transaction.Commit();
             return SetMessage(true, "Бронь создана");
         }
         catch (Exception ex)
@@ -114,6 +116,11 @@ public class SessionManager
             if (booking is null || booking.Status != "active")
             {
                 LastMessage = "Бронь не найдена";
+                return null;
+            }
+            if (!ComputerExists(connection, transaction, booking.ComputerNumber))
+            {
+                LastMessage = "Компьютер не найден или отключён";
                 return null;
             }
             if (ClientHasActiveSession(connection, transaction, booking.ClientId))
@@ -206,6 +213,10 @@ public class SessionManager
             var session = GetSessionById(connection, transaction, sessionId);
 
             if (session is null) return SetMessage(false, "Сеанс не найден");
+            if (!ComputerExists(connection, transaction, session.ComputerNumber))
+                return SetMessage(false, "Компьютер не найден или отключён");
+            session = GetSessionById(connection, transaction, sessionId, forUpdate: true);
+            if (session is null) return SetMessage(false, "Сеанс не найден");
             if (session.IsCompleted) return SetMessage(false, "Сеанс уже завершён");
 
             var newPlannedEnd = session.PlannedEndTime.Add(additionalDuration);
@@ -245,7 +256,7 @@ public class SessionManager
                 return null;
             }
 
-            return PrepareCompletedSession(session, DateTime.Now);
+            return PrepareCompletedSession(session, GetCompletionTime(session));
         }
         catch (Exception ex)
         {
@@ -255,12 +266,29 @@ public class SessionManager
     }
 
     public Session? CompleteSession(int sessionId)
+        => CompleteSession(sessionId, expiryCutoff: null);
+
+    internal Session? CompleteExpiredSession(int sessionId, DateTime expiryCutoff)
+        => CompleteSession(sessionId, expiryCutoff);
+
+    private Session? CompleteSession(int sessionId, DateTime? expiryCutoff)
     {
         try
         {
             using var connection = _db.CreateConnection();
             using var transaction = connection.BeginTransaction();
-            var session = GetSessionById(connection, transaction, sessionId);
+            if (expiryCutoff.HasValue)
+            {
+                // The timer runs on the UI thread. Retry contended rows on a later tick.
+                using var timeout = new NpgsqlCommand("SET LOCAL lock_timeout = '200ms'", connection, transaction);
+                timeout.ExecuteNonQuery();
+            }
+            var session = GetSessionById(connection, transaction, sessionId, forUpdate: true);
+            if (expiryCutoff.HasValue && (session is null || session.IsCompleted || session.PlannedEndTime > expiryCutoff.Value))
+            {
+                LastMessage = string.Empty;
+                return null;
+            }
 
             if (session is null)
             {
@@ -273,7 +301,8 @@ public class SessionManager
                 return null;
             }
 
-            var completedSession = PrepareCompletedSession(session, DateTime.Now);
+            var completedSession = PrepareCompletedSession(session,
+                expiryCutoff.HasValue ? session.PlannedEndTime : GetCompletionTime(session));
             var durationMinutes = ToMinutes(completedSession.Duration);
             var hours = durationMinutes / 60d;
             var clientBefore = _clientManager.GetClientById(connection, transaction, session.ClientId);
@@ -299,7 +328,11 @@ public class SessionManager
             command.Parameters.AddWithValue("@oneTimeDiscount", completedSession.OneTimeDiscountPercent);
             command.Parameters.AddWithValue("@personalDiscount", completedSession.PersonalDiscountPercent);
             command.Parameters.AddWithValue("@id", sessionId);
-            command.ExecuteNonQuery();
+            if (command.ExecuteNonQuery() != 1)
+            {
+                LastMessage = "Не удалось сохранить завершение сеанса";
+                return null;
+            }
 
             if (!_clientManager.UpdateClientStats(session.ClientId, hours, completedSession.TotalCost, newDiscount, connection, transaction))
             {
@@ -383,6 +416,12 @@ public class SessionManager
             sessions.Add(ReadSession(reader));
 
         return sessions;
+    }
+
+    private static DateTime GetCompletionTime(Session session)
+    {
+        var now = DateTime.Now;
+        return now < session.PlannedEndTime ? now : session.PlannedEndTime;
     }
 
     private Session PrepareCompletedSession(Session session, DateTime endTime)
@@ -500,13 +539,13 @@ public class SessionManager
         return Convert.ToInt32(command.ExecuteScalar()) > 0;
     }
 
-    private static bool ComputerExists(NpgsqlConnection connection, NpgsqlTransaction? transaction, int computerNumber)
+    private static bool ComputerExists(NpgsqlConnection connection, NpgsqlTransaction transaction, int computerNumber)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
-        command.CommandText = "SELECT COUNT(*) FROM Computers WHERE Number = @number AND IsActive = TRUE";
+        command.CommandText = "SELECT Number FROM Computers WHERE Number = @number AND IsActive = TRUE FOR UPDATE";
         command.Parameters.AddWithValue("@number", computerNumber);
-        return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        return command.ExecuteScalar() is not null;
     }
 
     private Booking? GetBookingById(NpgsqlConnection connection, NpgsqlTransaction? transaction, int bookingId)
@@ -525,7 +564,7 @@ public class SessionManager
         return reader.Read() ? ReadBooking(reader) : null;
     }
 
-    private Session? GetSessionById(NpgsqlConnection connection, NpgsqlTransaction? transaction, int sessionId)
+    private Session? GetSessionById(NpgsqlConnection connection, NpgsqlTransaction? transaction, int sessionId, bool forUpdate = false)
     {
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
@@ -536,7 +575,7 @@ public class SessionManager
             FROM Sessions s
             JOIN Clients c ON c.Id = s.ClientId
             WHERE s.Id = @id
-            """;
+            """ + (forUpdate ? " FOR UPDATE OF s" : string.Empty);
         command.Parameters.AddWithValue("@id", sessionId);
 
         using var reader = command.ExecuteReader();

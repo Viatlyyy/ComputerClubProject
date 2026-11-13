@@ -1,0 +1,56 @@
+-- Test-owned schema. Execute only after the disposable GUID database guard.
+CREATE TABLE IF NOT EXISTS Users (
+    Id SERIAL PRIMARY KEY,
+    Username TEXT NOT NULL UNIQUE,
+    Password TEXT NOT NULL,
+    Role TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS Clients (
+    Id SERIAL PRIMARY KEY,
+    FullName TEXT NOT NULL,
+    Phone TEXT NOT NULL UNIQUE,
+    TotalHours DOUBLE PRECISION NOT NULL DEFAULT 0,
+    TotalSpent NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    DiscountPercent INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS Computers (
+    Number INTEGER PRIMARY KEY,
+    Name TEXT NOT NULL,
+    IsActive BOOLEAN NOT NULL DEFAULT TRUE
+);
+CREATE TABLE IF NOT EXISTS Bookings (
+    Id SERIAL PRIMARY KEY,
+    ClientId INTEGER NOT NULL,
+    ComputerNumber INTEGER NOT NULL,
+    PlannedStart TIMESTAMP NOT NULL,
+    DurationMinutes INTEGER NOT NULL,
+    Status TEXT NOT NULL DEFAULT 'active',
+    CreatedAt TIMESTAMP NOT NULL,
+    FOREIGN KEY (ClientId) REFERENCES Clients(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ComputerNumber) REFERENCES Computers(Number)
+);
+CREATE TABLE IF NOT EXISTS Sessions (
+    Id SERIAL PRIMARY KEY,
+    ClientId INTEGER NOT NULL,
+    ComputerNumber INTEGER NOT NULL,
+    StartTime TIMESTAMP NOT NULL,
+    PlannedEndTime TIMESTAMP NOT NULL,
+    EndTime TIMESTAMP NULL,
+    DurationMinutes INTEGER NOT NULL DEFAULT 0,
+    TotalCost NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    TariffPerHour NUMERIC(12, 2) NOT NULL DEFAULT 0,
+    OneTimeDiscountPercent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+    PersonalDiscountPercent NUMERIC(5, 2) NOT NULL DEFAULT 0,
+    IsCompleted BOOLEAN NOT NULL DEFAULT FALSE,
+    BookingId INTEGER NULL,
+    FOREIGN KEY (ClientId) REFERENCES Clients(Id) ON DELETE CASCADE,
+    FOREIGN KEY (ComputerNumber) REFERENCES Computers(Number),
+    FOREIGN KEY (BookingId) REFERENCES Bookings(Id) ON DELETE SET NULL
+);
+CREATE TABLE IF NOT EXISTS Settings (
+    SettingKey TEXT PRIMARY KEY,
+    Value TEXT NOT NULL
+);
+-- Functional tests require a known tariff; authentication users are explicit per test.
+INSERT INTO Settings(SettingKey, Value) VALUES ('TariffPerHour', '150')
+ON CONFLICT(SettingKey) DO UPDATE SET Value = excluded.Value;

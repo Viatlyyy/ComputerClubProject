@@ -1,0 +1,37 @@
+{
+  "anonymized": true,
+  "restored_from_both_formats": true,
+  "schema_matches": true,
+  "sequences_match": true,
+  "passwords_require_local_setup": true,
+  "tables": [
+    {
+      "table": "bookings",
+      "rows": 5
+    },
+    {
+      "table": "clients",
+      "rows": 14
+    },
+    {
+      "table": "computers",
+      "rows": 12
+    },
+    {
+      "table": "sessions",
+      "rows": 53
+    },
+    {
+      "table": "settings",
+      "rows": 1
+    },
+    {
+      "table": "users",
+      "rows": 2
+    }
+  ],
+  "sha256": {
+    "ComputerClub.backup": "3CBA8E5FE21CEC160B8246CDA5AF55CFDFA61EC7745074065555047101E5E9CF",
+    "ComputerClub_full.sql": "7EAEABCF78DD420C4DC4608F246FEB75D4C1412487ED089DA84F234A4979AF3A"
+  }
+}

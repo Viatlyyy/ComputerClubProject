@@ -13,7 +13,6 @@ internal static class Program
         ApplicationConfiguration.Initialize();
 
         var database = new DatabaseHelper();
-        database.Initialize();
 
         Application.Run(new AuthPage(database));
     }

@@ -27,6 +27,10 @@ public partial class ClientEditDialog : Form
             };
 
         InitializeComponent();
+        UiTheme.Apply(this);
+        _txtFullName.Font = new System.Drawing.Font("Segoe UI", 9F);
+        _txtPhone.Font = new System.Drawing.Font("Segoe UI", 9F);
+        UiTheme.Action(_btnOk, primary: true);
         Text = Client.Id == 0 ? "Добавить клиента" : "Редактировать клиента";
         _txtFullName.Text = Client.FullName;
         _txtPhone.Text = Client.Phone;

@@ -9,6 +9,9 @@ namespace ComputerClubWinForms.Forms;
 
 partial class BookingDialog
 {
+    private TableLayoutPanel _layout = null!;
+    private TableLayoutPanel _fieldLayout = null!;
+    private FlowLayoutPanel _footerLayout = null!;
     private Label _dateLabel = null!;
     private Label _timeLabel = null!;
     private Label _durationLabel = null!;
@@ -24,6 +27,9 @@ partial class BookingDialog
 
     private void InitializeComponent()
     {
+        _layout = new TableLayoutPanel();
+        _fieldLayout = new TableLayoutPanel();
+        _footerLayout = new FlowLayoutPanel();
         _dateLabel = new Label();
         _timeLabel = new Label();
         _durationLabel = new Label();
@@ -36,137 +42,164 @@ partial class BookingDialog
         _computerMap = new Panel();
         _btnOk = new Button();
         _btnCancel = new Button();
-        ((System.ComponentModel.ISupportInitialize)_numDurationMinutes).BeginInit();
+        ((ISupportInitialize)_numDurationMinutes).BeginInit();
+        _layout.SuspendLayout();
+        _fieldLayout.SuspendLayout();
+        _footerLayout.SuspendLayout();
         SuspendLayout();
 
-        _dateLabel.AutoSize = true;
-        _dateLabel.Location = new Point(24, 26);
-        _dateLabel.Name = "_dateLabel";
-        _dateLabel.Size = new Size(32, 15);
-        _dateLabel.TabIndex = 0;
-        _dateLabel.Text = "Дата";
+        _layout.ColumnCount = 1;
+        _layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _layout.Controls.Add(_fieldLayout, 0, 0);
+        _layout.Controls.Add(_mapLabel, 0, 1);
+        _layout.Controls.Add(_computerMap, 0, 2);
+        _layout.Controls.Add(_footerLayout, 0, 3);
+        _layout.Dock = DockStyle.Fill;
+        _layout.Margin = new Padding(0);
+        _layout.Name = "_layout";
+        _layout.Padding = new Padding(20);
+        _layout.RowCount = 4;
+        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 176F));
+        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 44F));
+        _layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        _layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56F));
+        _layout.TabIndex = 0;
 
-        _dtpDate.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _fieldLayout.ColumnCount = 2;
+        _fieldLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 172F));
+        _fieldLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        _fieldLayout.Controls.Add(_dateLabel, 0, 0);
+        _fieldLayout.Controls.Add(_dtpDate, 1, 0);
+        _fieldLayout.Controls.Add(_timeLabel, 0, 1);
+        _fieldLayout.Controls.Add(_dtpTime, 1, 1);
+        _fieldLayout.Controls.Add(_durationLabel, 0, 2);
+        _fieldLayout.Controls.Add(_numDurationMinutes, 1, 2);
+        _fieldLayout.Controls.Add(_computerLabel, 0, 3);
+        _fieldLayout.Controls.Add(_cmbComputers, 1, 3);
+        _fieldLayout.Dock = DockStyle.Fill;
+        _fieldLayout.Margin = new Padding(0);
+        _fieldLayout.Name = "_fieldLayout";
+        _fieldLayout.RowCount = 4;
+        _fieldLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+        _fieldLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+        _fieldLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+        _fieldLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 25F));
+        _fieldLayout.TabIndex = 0;
+
+        _dateLabel.Anchor = AnchorStyles.Left;
+        _dateLabel.AutoSize = true;
+        _dateLabel.Margin = new Padding(0, 0, 12, 0);
+        _dateLabel.Name = "_dateLabel";
+        _dateLabel.Text = "Дата";
+        _dtpDate.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _dtpDate.Format = DateTimePickerFormat.Short;
-        _dtpDate.Location = new Point(176, 22);
+        _dtpDate.Margin = new Padding(0, 0, 0, 0);
         _dtpDate.Name = "_dtpDate";
-        _dtpDate.Size = new Size(382, 23);
-        _dtpDate.TabIndex = 1;
+        _dtpDate.Size = new Size(428, 27);
+        _dtpDate.TabIndex = 0;
         _dtpDate.Value = new DateTime(2026, 5, 15, 0, 0, 0, 0);
         _dtpDate.ValueChanged += DateOrDurationChanged;
-
+        _timeLabel.Anchor = AnchorStyles.Left;
         _timeLabel.AutoSize = true;
-        _timeLabel.Location = new Point(24, 60);
+        _timeLabel.Margin = new Padding(0, 0, 12, 0);
         _timeLabel.Name = "_timeLabel";
-        _timeLabel.Size = new Size(81, 15);
-        _timeLabel.TabIndex = 2;
         _timeLabel.Text = "Время начала";
-
-        _dtpTime.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _dtpTime.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _dtpTime.CustomFormat = "HH:mm";
         _dtpTime.Format = DateTimePickerFormat.Custom;
-        _dtpTime.Location = new Point(176, 56);
+        _dtpTime.Margin = new Padding(0);
         _dtpTime.Name = "_dtpTime";
         _dtpTime.ShowUpDown = true;
-        _dtpTime.Size = new Size(382, 23);
-        _dtpTime.TabIndex = 3;
+        _dtpTime.Size = new Size(428, 27);
+        _dtpTime.TabIndex = 1;
         _dtpTime.Value = new DateTime(2026, 5, 15, 12, 0, 0, 0);
         _dtpTime.ValueChanged += DateOrDurationChanged;
-
+        _durationLabel.Anchor = AnchorStyles.Left;
         _durationLabel.AutoSize = true;
-        _durationLabel.Location = new Point(24, 94);
+        _durationLabel.Margin = new Padding(0, 0, 12, 0);
         _durationLabel.Name = "_durationLabel";
-        _durationLabel.Size = new Size(108, 15);
-        _durationLabel.TabIndex = 4;
         _durationLabel.Text = "Длительность, мин";
-
-        _numDurationMinutes.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        _numDurationMinutes.Location = new Point(176, 90);
+        _numDurationMinutes.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _numDurationMinutes.Margin = new Padding(0);
         _numDurationMinutes.Maximum = new decimal(new int[] { 1440, 0, 0, 0 });
         _numDurationMinutes.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
         _numDurationMinutes.Name = "_numDurationMinutes";
-        _numDurationMinutes.Size = new Size(382, 23);
-        _numDurationMinutes.TabIndex = 5;
+        _numDurationMinutes.Size = new Size(428, 27);
+        _numDurationMinutes.TabIndex = 2;
         _numDurationMinutes.Value = new decimal(new int[] { 60, 0, 0, 0 });
         _numDurationMinutes.ValueChanged += DateOrDurationChanged;
-
+        _computerLabel.Anchor = AnchorStyles.Left;
         _computerLabel.AutoSize = true;
-        _computerLabel.Location = new Point(24, 128);
+        _computerLabel.Margin = new Padding(0, 0, 12, 0);
         _computerLabel.Name = "_computerLabel";
-        _computerLabel.Size = new Size(73, 15);
-        _computerLabel.TabIndex = 6;
         _computerLabel.Text = "Компьютер";
-
-        _cmbComputers.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _cmbComputers.Anchor = AnchorStyles.Left | AnchorStyles.Right;
         _cmbComputers.DropDownStyle = ComboBoxStyle.DropDownList;
         _cmbComputers.FormattingEnabled = true;
-        _cmbComputers.Location = new Point(176, 124);
+        _cmbComputers.Margin = new Padding(0);
         _cmbComputers.Name = "_cmbComputers";
-        _cmbComputers.Size = new Size(382, 23);
-        _cmbComputers.TabIndex = 7;
+        _cmbComputers.Size = new Size(428, 27);
+        _cmbComputers.TabIndex = 3;
         _cmbComputers.SelectedValueChanged += ComputerSelectionChanged;
 
-        _mapLabel.AutoSize = true;
-        _mapLabel.Location = new Point(24, 164);
+        _mapLabel.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+        _mapLabel.Margin = new Padding(0, 3, 0, 3);
         _mapLabel.Name = "_mapLabel";
-        _mapLabel.Size = new Size(67, 15);
-        _mapLabel.TabIndex = 8;
-        _mapLabel.Text = "Схема зала";
-
-        _computerMap.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+        _mapLabel.Size = new Size(600, 38);
+        _mapLabel.Text = "Зелёный — свободен; красный — занят или забронирован.\nВыбранный компьютер выделен.";
+        _mapLabel.TextAlign = ContentAlignment.MiddleLeft;
         _computerMap.AutoScroll = true;
         _computerMap.BorderStyle = BorderStyle.FixedSingle;
-        _computerMap.Location = new Point(176, 160);
+        _computerMap.Dock = DockStyle.Fill;
+        _computerMap.Margin = new Padding(0);
         _computerMap.Name = "_computerMap";
-        _computerMap.Size = new Size(382, 262);
-        _computerMap.TabIndex = 9;
+        _computerMap.TabIndex = 1;
+        _computerMap.TabStop = false;
 
-        _btnOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-        _btnOk.Location = new Point(332, 444);
+        _footerLayout.Controls.Add(_btnCancel);
+        _footerLayout.Controls.Add(_btnOk);
+        _footerLayout.Dock = DockStyle.Fill;
+        _footerLayout.FlowDirection = FlowDirection.RightToLeft;
+        _footerLayout.Margin = new Padding(0);
+        _footerLayout.Name = "_footerLayout";
+        _footerLayout.Padding = new Padding(0, 16, 0, 0);
+        _footerLayout.TabIndex = 2;
+        _footerLayout.WrapContents = false;
+        _btnOk.Margin = new Padding(0, 0, 10, 0);
         _btnOk.Name = "_btnOk";
-        _btnOk.Size = new Size(110, 27);
-        _btnOk.TabIndex = 10;
-        _btnOk.Text = "Создать";
-        _btnOk.UseVisualStyleBackColor = true;
+        _btnOk.Size = new Size(136, 40);
+        _btnOk.TabIndex = 0;
+        _btnOk.Text = "Создать бронь";
         _btnOk.Click += OnOkClick;
-
-        _btnCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         _btnCancel.DialogResult = DialogResult.Cancel;
-        _btnCancel.Location = new Point(448, 444);
+        _btnCancel.Margin = new Padding(0);
         _btnCancel.Name = "_btnCancel";
-        _btnCancel.Size = new Size(110, 27);
-        _btnCancel.TabIndex = 11;
+        _btnCancel.Size = new Size(136, 40);
+        _btnCancel.TabIndex = 1;
         _btnCancel.Text = "Отмена";
-        _btnCancel.UseVisualStyleBackColor = true;
 
         AcceptButton = _btnOk;
+        Font = UiTheme.BodyFont;
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
         CancelButton = _btnCancel;
-        ClientSize = new Size(582, 490);
-        Controls.AddRange(new Control[]
-        {
-            _dateLabel,
-            _dtpDate,
-            _timeLabel,
-            _dtpTime,
-            _durationLabel,
-            _numDurationMinutes,
-            _computerLabel,
-            _cmbComputers,
-            _mapLabel,
-            _computerMap,
-            _btnOk,
-            _btnCancel
-        });
+        ClientSize = new Size(640, 566);
+        Controls.Add(_layout);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        MinimumSize = new Size(598, 529);
+        MinimumSize = new Size(656, 605);
         Name = "BookingDialog";
         StartPosition = FormStartPosition.CenterParent;
         Text = "Новая бронь";
-        ((System.ComponentModel.ISupportInitialize)_numDurationMinutes).EndInit();
+        UiTheme.Apply(this);
+        UiTheme.Action(_btnOk, primary: true);
+        _mapLabel.ForeColor = SystemColors.ControlText;
+        _layout.ResumeLayout(false);
+        _fieldLayout.ResumeLayout(false);
+        _fieldLayout.PerformLayout();
+        _footerLayout.ResumeLayout(false);
+        ((ISupportInitialize)_numDurationMinutes).EndInit();
         ResumeLayout(false);
         PerformLayout();
     }

@@ -17,6 +17,10 @@ public partial class ReportPage : UserControl
     public ReportPage()
     {
         InitializeComponent();
+        UiTheme.Apply(this);
+        _titleLabel.Font = UiTheme.HeadingFont;
+        _lblTotalRevenue.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+        UiTheme.Action(_btnGenerate, primary: true);
 
         if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
             ShowDesignPreviewReport();
@@ -79,12 +83,26 @@ public partial class ReportPage : UserControl
         });
 
         _dgvReport.DataSource = rows;
-        if (_dgvReport.Columns[nameof(ReportRow.Date)] is DataGridViewColumn dateColumn) dateColumn.HeaderText = "Дата";
-        if (_dgvReport.Columns[nameof(ReportRow.SessionsCount)] is DataGridViewColumn countColumn) countColumn.HeaderText = "Количество сеансов";
+        if (_dgvReport.Columns[nameof(ReportRow.Date)] is DataGridViewColumn dateColumn)
+        {
+            dateColumn.HeaderText = "Дата";
+            dateColumn.FillWeight = 110;
+            dateColumn.MinimumWidth = 150;
+        }
+        if (_dgvReport.Columns[nameof(ReportRow.SessionsCount)] is DataGridViewColumn countColumn)
+        {
+            countColumn.HeaderText = "Количество сеансов";
+            countColumn.FillWeight = 130;
+            countColumn.MinimumWidth = 200;
+            countColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+        }
         if (_dgvReport.Columns[nameof(ReportRow.Revenue)] is DataGridViewColumn revenueColumn)
         {
             revenueColumn.HeaderText = "Выручка, руб.";
+            revenueColumn.FillWeight = 160;
+            revenueColumn.MinimumWidth = 180;
             revenueColumn.DefaultCellStyle.Format = "N2";
+            revenueColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
         }
 
         _lblTotalRevenue.Text = $"Итого: {report.TotalSessions} сеансов, {report.TotalRevenue.ToString("N2", culture)} руб.";

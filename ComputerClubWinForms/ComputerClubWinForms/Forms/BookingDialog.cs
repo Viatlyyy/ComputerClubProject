@@ -13,6 +13,7 @@ public partial class BookingDialog : Form
 {
     private SessionManager? _sessionManager;
     private int? _initialComputerNumber;
+    private readonly Dictionary<int, bool> _computerAvailability = new();
 
     public int ClientId { get; private set; }
     public DateTime SelectedStart => _dtpDate.Value.Date + _dtpTime.Value.TimeOfDay;
@@ -30,6 +31,7 @@ public partial class BookingDialog : Form
     public BookingDialog()
     {
         InitializeComponent();
+        _computerMap.SizeChanged += (_, _) => LayoutComputerMapButtons();
         SetDefaultDateTime();
 
         if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
@@ -92,6 +94,7 @@ public partial class BookingDialog : Form
     {
         _computerMap.SuspendLayout();
         _computerMap.Controls.Clear();
+        _computerAvailability.Clear();
 
         var start = SelectedStart;
         var duration = SelectedDuration;
@@ -104,31 +107,36 @@ public partial class BookingDialog : Form
             AddComputerButton(computer.Number, available);
         }
 
+        LayoutComputerMapButtons();
         _computerMap.ResumeLayout();
         UpdateComputerMapSelection();
     }
 
     private void AddComputerButton(int computerNumber, bool available)
     {
-        const int buttonWidth = 78;
-        const int buttonHeight = 44;
-        const int spacing = 10;
-        const int startOffset = 8;
-
         var index = _computerMap.Controls.Count;
-        var columns = Math.Max(1, (_computerMap.ClientSize.Width - startOffset) / (buttonWidth + spacing));
-        var row = index / columns;
-        var column = index % columns;
-
         var button = new Button();
         button.Text = $"ПК {computerNumber}";
-        button.Size = new Size(buttonWidth, buttonHeight);
-        button.Location = new Point(startOffset + column * (buttonWidth + spacing), startOffset + row * (buttonHeight + spacing));
-        button.BackColor = available ? Color.LightGreen : Color.LightCoral;
-        button.UseVisualStyleBackColor = false;
         button.Tag = computerNumber;
+        button.TabIndex = index;
+        _computerAvailability[computerNumber] = available;
+        UiTheme.ComputerButton(button, available, computerNumber == SelectedComputerNumber);
         button.Click += (_, _) => _cmbComputers.SelectedValue = computerNumber;
         _computerMap.Controls.Add(button);
+    }
+
+    private void LayoutComputerMapButtons()
+    {
+        var scale = DeviceDpi / 96F;
+        var buttonWidth = (int)Math.Round(92 * scale);
+        var buttonHeight = (int)Math.Round(46 * scale);
+        var spacing = (int)Math.Round(8 * scale);
+        var offset = (int)Math.Round(8 * scale);
+        var availableWidth = Math.Max(buttonWidth, _computerMap.ClientSize.Width - 2 * offset - SystemInformation.VerticalScrollBarWidth);
+        var columns = Math.Max(1, (availableWidth + spacing) / (buttonWidth + spacing));
+        var scroll = _computerMap.AutoScrollPosition;
+        for (var index = 0; index < _computerMap.Controls.Count; index++)
+            _computerMap.Controls[index].SetBounds(scroll.X + offset + index % columns * (buttonWidth + spacing), scroll.Y + offset + index / columns * (buttonHeight + spacing), buttonWidth, buttonHeight);
     }
 
     private void UpdateComputerMapSelection()
@@ -138,7 +146,7 @@ public partial class BookingDialog : Form
             if (control is not Button button || button.Tag is not int number)
                 continue;
 
-            button.FlatStyle = number == SelectedComputerNumber ? FlatStyle.Popup : FlatStyle.Standard;
+            UiTheme.ComputerButton(button, _computerAvailability.TryGetValue(number, out var available) && available, number == SelectedComputerNumber);
         }
     }
 

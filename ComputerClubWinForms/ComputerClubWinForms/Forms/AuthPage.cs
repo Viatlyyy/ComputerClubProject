@@ -3,6 +3,7 @@ using System.Windows.Forms;
 using ComputerClubWinForms.Data;
 using ComputerClubWinForms.Managers;
 using ComputerClubWinForms.Models;
+using Npgsql;
 
 namespace ComputerClubWinForms.Forms;
 
@@ -14,6 +15,12 @@ public partial class AuthPage : Form
     public AuthPage()
     {
         InitializeComponent();
+        UiTheme.Apply(this);
+        _titleLabel.Font = UiTheme.HeadingFont;
+        _usernameTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+        _passwordTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
+        _errorLabel.ForeColor = System.Drawing.Color.DarkRed;
+        UiTheme.Action(_loginButton, primary: true);
     }
 
     public AuthPage(DatabaseHelper db) : this()
@@ -44,9 +51,18 @@ public partial class AuthPage : Form
 
     private void OpenMainForm(User user)
     {
-        Hide();
+        MainForm mainForm;
+        try
+        {
+            mainForm = new MainForm(_db!, user);
+        }
+        catch (NpgsqlException)
+        {
+            _userManager?.Logout();
+            ShowError("Не удалось открыть главное окно. Проверьте подключение и структуру готовой базы данных.");
+            return;
+        }
 
-        var mainForm = new MainForm(_db!, user);
         mainForm.FormClosed += (_, _) =>
         {
             if (mainForm.IsLogoutRequested)
@@ -60,6 +76,7 @@ public partial class AuthPage : Form
                 Close();
             }
         };
+        Hide();
         mainForm.Show();
     }
 

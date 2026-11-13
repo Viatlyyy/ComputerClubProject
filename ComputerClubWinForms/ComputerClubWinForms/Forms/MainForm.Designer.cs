@@ -10,6 +10,7 @@ namespace ComputerClubWinForms.Forms;
 partial class MainForm
 {
     private Panel _headerPanel = null!;
+    private Label _appTitleLabel = null!;
     private Label _currentUserLabel = null!;
     private Button _logoutButton = null!;
     private TabControl _mainTabControl = null!;
@@ -24,6 +25,7 @@ partial class MainForm
     private void InitializeComponent()
     {
         _headerPanel = new Panel();
+        _appTitleLabel = new Label();
         _currentUserLabel = new Label();
         _logoutButton = new Button();
         _mainTabControl = new TabControl();
@@ -40,25 +42,26 @@ partial class MainForm
         _tabReports.SuspendLayout();
         _tabSettings.SuspendLayout();
         SuspendLayout();
+        _headerPanel.Controls.Add(_appTitleLabel);
         _headerPanel.Controls.Add(_currentUserLabel);
         _headerPanel.Controls.Add(_logoutButton);
         _headerPanel.Dock = DockStyle.Top;
         _headerPanel.Location = new Point(0, 0);
         _headerPanel.Name = "_headerPanel";
         _headerPanel.Padding = new Padding(14, 8, 14, 8);
-        _headerPanel.Size = new Size(1100, 48);
+        _headerPanel.Size = new Size(1280, 64);
         _headerPanel.TabIndex = 0;
         _currentUserLabel.AutoSize = true;
-        _currentUserLabel.Location = new Point(14, 16);
+        _currentUserLabel.Location = new Point(20, 37);
         _currentUserLabel.Name = "_currentUserLabel";
         _currentUserLabel.Size = new Size(332, 15);
         _currentUserLabel.TabIndex = 0;
         _currentUserLabel.Text = "Пользователь: admin | Роль: admin (пример конструктора)";
         _currentUserLabel.TextAlign = ContentAlignment.MiddleLeft;
         _logoutButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        _logoutButton.Location = new Point(976, 10);
+        _logoutButton.Location = new Point(1140, 12);
         _logoutButton.Name = "_logoutButton";
-        _logoutButton.Size = new Size(110, 28);
+        _logoutButton.Size = new Size(120, 40);
         _logoutButton.TabIndex = 1;
         _logoutButton.Text = "Выйти";
         _logoutButton.UseVisualStyleBackColor = true;
@@ -68,10 +71,13 @@ partial class MainForm
         _mainTabControl.Controls.Add(_tabReports);
         _mainTabControl.Controls.Add(_tabSettings);
         _mainTabControl.Dock = DockStyle.Fill;
-        _mainTabControl.Location = new Point(0, 48);
+        _mainTabControl.Location = new Point(0, 64);
         _mainTabControl.Name = "_mainTabControl";
         _mainTabControl.SelectedIndex = 0;
-        _mainTabControl.Size = new Size(1100, 672);
+        _mainTabControl.ItemSize = new Size(150, 42);
+        _mainTabControl.SizeMode = TabSizeMode.Fixed;
+        _mainTabControl.HotTrack = true;
+        _mainTabControl.Size = new Size(1280, 736);
         _mainTabControl.TabIndex = 1;
         _tabClients.Location = new Point(4, 24);
         _tabClients.Name = "_tabClients";
@@ -122,9 +128,10 @@ partial class MainForm
         _settingsPlaceholderLabel.Size = new Size(523, 15);
         _settingsPlaceholderLabel.TabIndex = 0;
         _settingsPlaceholderLabel.Text = "Во время запуска сюда подставляется SettingsPage. Отдельно её можно открыть в дизайнере.";
+        Font = UiTheme.BodyFont;
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
-        ClientSize = new Size(1100, 720);
+        ClientSize = new Size(1280, 800);
         Controls.Add(_mainTabControl);
         Controls.Add(_headerPanel);
         MinimumSize = new Size(1100, 720);
@@ -132,6 +139,17 @@ partial class MainForm
         StartPosition = FormStartPosition.CenterScreen;
         Text = "Компьютерный клуб — управление сеансами";
         WindowState = FormWindowState.Maximized;
+        UiTheme.Apply(this);
+        _headerPanel.BackColor = SystemColors.Control;
+        _appTitleLabel.AutoSize = true;
+        _appTitleLabel.Location = new Point(20, 7);
+        _appTitleLabel.Name = "_appTitleLabel";
+        _appTitleLabel.Text = "Компьютерный клуб";
+        _appTitleLabel.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        _appTitleLabel.ForeColor = SystemColors.ControlText;
+        _currentUserLabel.ForeColor = SystemColors.ControlText;
+        _logoutButton.AccessibleDescription = "Выйти из текущей учетной записи";
+        _mainTabControl.Font = new Font("Segoe UI", 9F);
         _headerPanel.ResumeLayout(false);
         _headerPanel.PerformLayout();
         _mainTabControl.ResumeLayout(false);

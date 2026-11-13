@@ -9,6 +9,9 @@ namespace ComputerClubWinForms.Forms
         public ExtendSessionDialog()
         {
             InitializeComponent();
+            UiTheme.Apply(this);
+            _numMinutes.Font = new System.Drawing.Font("Segoe UI", 9F);
+            UiTheme.Action(_btnOk, primary: true);
         }
     }
 }

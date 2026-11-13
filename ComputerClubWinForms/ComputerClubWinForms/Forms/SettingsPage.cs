@@ -13,6 +13,11 @@ public partial class SettingsPage : UserControl
     public SettingsPage()
     {
         InitializeComponent();
+        UiTheme.Apply(this);
+        _titleLabel.Font = UiTheme.HeadingFont;
+        _lblCurrentTariff.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+        _txtTariff.Font = new System.Drawing.Font("Segoe UI", 9F);
+        UiTheme.Action(_btnSaveTariff, primary: true);
 
         if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
             ShowCurrentTariff(150m);

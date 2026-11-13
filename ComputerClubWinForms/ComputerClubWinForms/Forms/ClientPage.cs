@@ -17,6 +17,11 @@ namespace ComputerClubWinForms.Forms
         public ClientPage()
         {
             InitializeComponent();
+            UiTheme.Apply(this);
+            _titleLabel.Font = UiTheme.HeadingFont;
+            _txtSearch.Font = new System.Drawing.Font("Segoe UI", 9F);
+            UiTheme.Action(_btnAddClient, primary: true);
+            UiTheme.Action(_btnDeleteClient, danger: true);
             EnsureClientGridColumns();
 
             
@@ -57,12 +62,12 @@ namespace ComputerClubWinForms.Forms
                 return;
 
             _gridClients.AutoGenerateColumns = false;
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.Id), DataPropertyName = nameof(ClientGridRow.Id), HeaderText = "ID", MinimumWidth = 50, ReadOnly = true });
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.FullName), DataPropertyName = nameof(ClientGridRow.FullName), HeaderText = "ФИО", ReadOnly = true });
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.Phone), DataPropertyName = nameof(ClientGridRow.Phone), HeaderText = "Телефон", ReadOnly = true });
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.TotalHours), DataPropertyName = nameof(ClientGridRow.TotalHours), HeaderText = "Всего часов", ReadOnly = true });
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.TotalSpent), DataPropertyName = nameof(ClientGridRow.TotalSpent), HeaderText = "Всего потрачено", ReadOnly = true });
-            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.DiscountPercent), DataPropertyName = nameof(ClientGridRow.DiscountPercent), HeaderText = "Скидка, %", ReadOnly = true });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.Id), DataPropertyName = nameof(ClientGridRow.Id), HeaderText = "ID", MinimumWidth = 54, FillWeight = 45, ReadOnly = true });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.FullName), DataPropertyName = nameof(ClientGridRow.FullName), HeaderText = "ФИО", MinimumWidth = 220, FillWeight = 240, ReadOnly = true });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.Phone), DataPropertyName = nameof(ClientGridRow.Phone), HeaderText = "Телефон", MinimumWidth = 150, FillWeight = 160, ReadOnly = true });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.TotalHours), DataPropertyName = nameof(ClientGridRow.TotalHours), HeaderText = "Всего часов", MinimumWidth = 120, FillWeight = 120, ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" } });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.TotalSpent), DataPropertyName = nameof(ClientGridRow.TotalSpent), HeaderText = "Всего потрачено", MinimumWidth = 160, FillWeight = 160, ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight, Format = "N2" } });
+            _gridClients.Columns.Add(new DataGridViewTextBoxColumn { Name = nameof(ClientGridRow.DiscountPercent), DataPropertyName = nameof(ClientGridRow.DiscountPercent), HeaderText = "Скидка, %", MinimumWidth = 110, FillWeight = 100, ReadOnly = true, DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleRight } });
         }
 
         private void OnSearchTextChanged(object? sender, EventArgs e)
@@ -71,7 +76,7 @@ namespace ComputerClubWinForms.Forms
                 LoadClients();
         }
 
-        private void LoadClients()
+        public void LoadClients()
         {
             if (_clientManager is null)
                 return;
@@ -100,6 +105,31 @@ namespace ComputerClubWinForms.Forms
             }).ToList();
 
             ShowRows(rows);
+        }
+
+        internal void RefreshSessionStatistics()
+        {
+            if (_clientManager is null || _gridClients.DataSource is null)
+                return;
+
+            var selectedId = GetSelectedRow()?.Id;
+            var column = _gridClients.CurrentCell?.ColumnIndex ?? 0;
+            var firstRow = _gridClients.FirstDisplayedScrollingRowIndex;
+            var horizontalOffset = _gridClients.HorizontalScrollingOffset;
+            ShowClients(_clientManager.GetAllClients(_txtSearch.Text));
+            _gridClients.CurrentCell = null;
+            _gridClients.ClearSelection();
+
+            var selectedRow = _gridClients.Rows.Cast<DataGridViewRow>()
+                .FirstOrDefault(row => row.DataBoundItem is ClientGridRow client && client.Id == selectedId);
+            if (selectedRow is not null)
+            {
+                _gridClients.CurrentCell = selectedRow.Cells[column];
+                selectedRow.Selected = true;
+            }
+            if (firstRow >= 0 && _gridClients.Rows.Count > 0)
+                _gridClients.FirstDisplayedScrollingRowIndex = Math.Min(firstRow, _gridClients.Rows.Count - 1);
+            _gridClients.HorizontalScrollingOffset = horizontalOffset;
         }
 
         private void ShowRows(List<ClientGridRow> rows)

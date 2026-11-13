@@ -15,6 +15,9 @@ public partial class ReceiptDialog : Form
     public ReceiptDialog()
     {
         InitializeComponent();
+        UiTheme.Apply(this);
+        _textBox.Font = new System.Drawing.Font("Consolas", 10F);
+        UiTheme.Action(_btnOk, primary: true);
         _textBox.Text = BuildText(_session);
     }
 
@@ -25,6 +28,11 @@ public partial class ReceiptDialog : Form
         Text = _confirmMode ? "Подтверждение оплаты" : "Чек закрытого сеанса";
         _btnOk.Text = _confirmMode ? "Подтвердить оплату" : "ОК";
         _btnCancel.Visible = _confirmMode;
+        var scale = DeviceDpi / 96F;
+        _btnOk.Width = (int)Math.Round((_confirmMode ? 220 : 128) * scale);
+        _btnOk.Left = _confirmMode
+            ? _btnCancel.Left - (int)Math.Round(12 * scale) - _btnOk.Width
+            : ClientSize.Width - (int)Math.Round(24 * scale) - _btnOk.Width;
         CancelButton = _confirmMode ? _btnCancel : _btnOk;
         _textBox.Text = BuildText(session);
     }

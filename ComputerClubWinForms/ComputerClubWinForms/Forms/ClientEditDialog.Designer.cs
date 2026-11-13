@@ -27,35 +27,35 @@ partial class ClientEditDialog
         SuspendLayout();
 
         _fullNameLabel.AutoSize = true;
-        _fullNameLabel.Location = new Point(26, 30);
+        _fullNameLabel.Location = new Point(24, 24);
         _fullNameLabel.Name = "_fullNameLabel";
         _fullNameLabel.Size = new Size(34, 15);
         _fullNameLabel.TabIndex = 0;
         _fullNameLabel.Text = "ФИО";
 
         _txtFullName.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        _txtFullName.Location = new Point(145, 26);
+        _txtFullName.Location = new Point(24, 52);
         _txtFullName.Name = "_txtFullName";
-        _txtFullName.Size = new Size(284, 23);
+        _txtFullName.Size = new Size(472, 27);
         _txtFullName.TabIndex = 1;
 
         _phoneLabel.AutoSize = true;
-        _phoneLabel.Location = new Point(26, 70);
+        _phoneLabel.Location = new Point(24, 104);
         _phoneLabel.Name = "_phoneLabel";
         _phoneLabel.Size = new Size(52, 15);
         _phoneLabel.TabIndex = 2;
         _phoneLabel.Text = "Телефон";
 
         _txtPhone.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-        _txtPhone.Location = new Point(145, 66);
+        _txtPhone.Location = new Point(24, 132);
         _txtPhone.Name = "_txtPhone";
-        _txtPhone.Size = new Size(284, 23);
+        _txtPhone.Size = new Size(472, 27);
         _txtPhone.TabIndex = 3;
 
         _btnOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
-        _btnOk.Location = new Point(204, 160);
+        _btnOk.Location = new Point(224, 208);
         _btnOk.Name = "_btnOk";
-        _btnOk.Size = new Size(108, 27);
+        _btnOk.Size = new Size(130, 42);
         _btnOk.TabIndex = 4;
         _btnOk.Text = "Сохранить";
         _btnOk.UseVisualStyleBackColor = true;
@@ -63,9 +63,9 @@ partial class ClientEditDialog
 
         _btnCancel.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         _btnCancel.DialogResult = DialogResult.Cancel;
-        _btnCancel.Location = new Point(318, 160);
+        _btnCancel.Location = new Point(366, 208);
         _btnCancel.Name = "_btnCancel";
-        _btnCancel.Size = new Size(108, 27);
+        _btnCancel.Size = new Size(130, 42);
         _btnCancel.TabIndex = 5;
         _btnCancel.Text = "Отмена";
         _btnCancel.UseVisualStyleBackColor = true;
@@ -73,8 +73,9 @@ partial class ClientEditDialog
         AcceptButton = _btnOk;
         AutoScaleDimensions = new SizeF(7F, 15F);
         AutoScaleMode = AutoScaleMode.Font;
+        Font = new Font("Segoe UI", 9F);
         CancelButton = _btnCancel;
-        ClientSize = new Size(456, 210);
+        ClientSize = new Size(520, 274);
         Controls.AddRange(new Control[]
         {
             _fullNameLabel,
@@ -87,7 +88,7 @@ partial class ClientEditDialog
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
-        MinimumSize = new Size(472, 249);
+        MinimumSize = new Size(536, 313);
         Name = "ClientEditDialog";
         StartPosition = FormStartPosition.CenterParent;
         Text = "Добавить клиента";

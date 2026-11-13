@@ -33,10 +33,11 @@ public class ClientManager
             command.CommandText = """
                 INSERT INTO Clients(FullName, Phone, TotalHours, TotalSpent, DiscountPercent)
                 VALUES (@fullName, @phone, 0, 0, 0)
+                RETURNING Id
                 """;
             command.Parameters.AddWithValue("@fullName", client.FullName.Trim());
             command.Parameters.AddWithValue("@phone", client.Phone.Trim());
-            command.ExecuteNonQuery();
+            client.Id = Convert.ToInt32(command.ExecuteScalar());
 
             return Ok("Клиент добавлен");
         }
@@ -115,7 +116,7 @@ public class ClientManager
             command.CommandText = """
                 SELECT Id, FullName, Phone, TotalHours, TotalSpent, DiscountPercent
                 FROM Clients
-                WHERE FullName LIKE @term OR Phone LIKE @term
+                WHERE FullName ILIKE @term OR Phone ILIKE @term
                 ORDER BY FullName
                 """;
             command.Parameters.AddWithValue("@term", $"%{searchText.Trim()}%");

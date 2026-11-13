@@ -11,6 +11,8 @@ namespace ComputerClubWinForms.Forms
         public ComparePeriodDialog()
         {
             InitializeComponent();
+            UiTheme.Apply(this);
+            UiTheme.Action(_btnOk, primary: true);
             _dtpOtherStart.Value = DateTime.Now.Date.AddDays(-14);
             _dtpOtherEnd.Value = DateTime.Now.Date.AddDays(-8);
         }

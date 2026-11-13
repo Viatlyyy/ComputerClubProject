@@ -40,6 +40,8 @@ public partial class MainForm : Form
         var sessionPage = new SessionPage(clientManager, sessionManager);
 
         clientPage.ClientsChanged += (_, _) => sessionPage.ReloadClients();
+        sessionPage.ClientsChanged += (_, _) => clientPage.LoadClients();
+        sessionPage.SessionStatisticsChanged += (_, _) => clientPage.RefreshSessionStatistics();
 
         _mainTabControl.TabPages.Add(CreateRuntimeTab("Клиенты", clientPage));
         _mainTabControl.TabPages.Add(CreateRuntimeTab("Сеансы", sessionPage));
@@ -49,6 +51,7 @@ public partial class MainForm : Form
             _mainTabControl.TabPages.Add(CreateRuntimeTab("Отчёты", new ReportPage(analyticsManager)));
             _mainTabControl.TabPages.Add(CreateRuntimeTab("Настройки", new SettingsPage(tariffManager)));
         }
+        sessionPage.StartRefreshTimer();
     }
 
     public void SwitchToPage(int index)
@@ -60,7 +63,11 @@ public partial class MainForm : Form
     private static TabPage CreateRuntimeTab(string title, Control content)
     {
         content.Dock = DockStyle.Fill;
-        var tab = new TabPage(title);
+        var tab = new TabPage(title)
+        {
+            BackColor = UiTheme.Background,
+            Padding = new Padding(0)
+        };
         tab.Controls.Add(content);
         return tab;
     }
