@@ -3,7 +3,6 @@ using System.Windows.Forms;
 
 namespace ComputerClubWinForms.Forms;
 
-// Keep larger controls and rows with the original Windows appearance.
 internal static class UiTheme
 {
     internal static readonly Font BodyFont = new Font("Segoe UI", 9F);

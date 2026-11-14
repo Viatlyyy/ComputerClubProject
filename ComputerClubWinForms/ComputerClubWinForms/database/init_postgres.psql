@@ -1,6 +1,4 @@
 \set ON_ERROR_STOP on
--- Запускайте только в заранее созданной пустой базе.
--- Для импорта всех демонстрационных данных используйте каталог database в корне репозитория.
 BEGIN;
 CREATE TABLE IF NOT EXISTS Users (
     Id SERIAL PRIMARY KEY,
@@ -65,5 +63,4 @@ INSERT INTO Settings(SettingKey, Value) VALUES ('TariffPerHour', '150') ON CONFL
 INSERT INTO Users(Username, Password, Role) VALUES ('admin', '', 'admin') ON CONFLICT(Username) DO NOTHING;
 INSERT INTO Users(Username, Password, Role) VALUES ('manager', '', 'manager') ON CONFLICT(Username) DO NOTHING;
 
--- Компьютеры добавляются в таблицу Computers вручную.
 COMMIT;

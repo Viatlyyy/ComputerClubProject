@@ -279,7 +279,6 @@ public class SessionManager
             using var transaction = connection.BeginTransaction();
             if (expiryCutoff.HasValue)
             {
-                // The timer runs on the UI thread. Retry contended rows on a later tick.
                 using var timeout = new NpgsqlCommand("SET LOCAL lock_timeout = '200ms'", connection, transaction);
                 timeout.ExecuteNonQuery();
             }
