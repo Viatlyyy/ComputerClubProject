@@ -5,9 +5,12 @@ namespace ComputerClubWinForms.Data;
 
 public class DatabaseHelper
 {
+    private const string DefaultConnectionString =
+        "Host=192.168.1.48;Username=st50-4;Password=<ПАРОЛЬ>;Database=ComputerClub";
+
     public string ConnectionString { get; }
 
-    public DatabaseHelper() : this(BuildConnectionString())
+    public DatabaseHelper() : this(DefaultConnectionString)
     {
     }
 
@@ -17,21 +20,6 @@ public class DatabaseHelper
             throw new ArgumentException("Строка подключения не должна быть пустой.", nameof(connectionString));
 
         ConnectionString = connectionString;
-    }
-
-    private static string BuildConnectionString()
-    {
-        var settings = new NpgsqlConnectionStringBuilder
-        {
-            Host = Environment.GetEnvironmentVariable("PGHOST") ?? "localhost",
-            Port = int.TryParse(Environment.GetEnvironmentVariable("PGPORT"), out var port) && port is > 0 and <= 65535 ? port : 5432,
-            Database = Environment.GetEnvironmentVariable("PGDATABASE") ?? "computer_club",
-            Username = Environment.GetEnvironmentVariable("PGUSER") ?? "postgres"
-        };
-        var password = Environment.GetEnvironmentVariable("PGPASSWORD");
-        if (!string.IsNullOrEmpty(password))
-            settings.Password = password;
-        return settings.ConnectionString;
     }
 
     public NpgsqlConnection CreateConnection()
