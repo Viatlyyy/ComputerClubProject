@@ -7,6 +7,7 @@ internal static class UiTheme
 {
     internal static readonly Font BodyFont = new Font("Segoe UI", 9F);
     internal static readonly Font HeadingFont = new Font("Segoe UI", 9F, FontStyle.Bold);
+    private static readonly Font TabFont = new Font("Segoe UI", 10.5F);
     internal static readonly Color Background = SystemColors.Control;
     internal static readonly Color Muted = Color.DimGray;
 
@@ -59,6 +60,13 @@ internal static class UiTheme
         button.Padding = new Padding(8, 0, 8, 0);
         button.AutoEllipsis = true;
         button.Cursor = Cursors.Default;
+    }
+
+    internal static void Tabs(TabControl tabs)
+    {
+        tabs.Font = TabFont;
+        tabs.SizeMode = TabSizeMode.Fixed;
+        tabs.ItemSize = new Size(168, 34);
     }
 
     internal static void Grid(DataGridView grid)

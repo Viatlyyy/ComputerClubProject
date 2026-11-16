@@ -25,8 +25,9 @@ public class ClientManager
 
         try
         {
+            var phone = GetStoredPhone(client.Phone);
             using var connection = _db.CreateConnection();
-            if (PhoneExists(connection, client.Phone, null))
+            if (PhoneExists(connection, phone, null))
                 return Fail("Клиент с таким телефоном уже зарегистрирован");
 
             using var command = connection.CreateCommand();
@@ -36,8 +37,9 @@ public class ClientManager
                 RETURNING Id
                 """;
             command.Parameters.AddWithValue("@fullName", client.FullName.Trim());
-            command.Parameters.AddWithValue("@phone", client.Phone.Trim());
+            command.Parameters.AddWithValue("@phone", phone);
             client.Id = Convert.ToInt32(command.ExecuteScalar());
+            client.Phone = phone;
 
             return Ok("Клиент добавлен");
         }
@@ -58,18 +60,22 @@ public class ClientManager
 
         try
         {
+            var phone = GetStoredPhone(client.Phone);
             using var connection = _db.CreateConnection();
-            if (PhoneExists(connection, client.Phone, client.Id))
+            if (PhoneExists(connection, phone, client.Id))
                 return Fail("Телефон уже занят другим клиентом");
 
             using var command = connection.CreateCommand();
             command.CommandText = "UPDATE Clients SET FullName = @fullName, Phone = @phone WHERE Id = @id";
             command.Parameters.AddWithValue("@fullName", client.FullName.Trim());
-            command.Parameters.AddWithValue("@phone", client.Phone.Trim());
+            command.Parameters.AddWithValue("@phone", phone);
             command.Parameters.AddWithValue("@id", client.Id);
 
             var affected = command.ExecuteNonQuery();
-            return affected > 0 ? Ok("Клиент обновлён") : Fail("Клиент не найден");
+            if (affected == 0)
+                return Fail("Клиент не найден");
+            client.Phone = phone;
+            return Ok("Клиент обновлён");
         }
         catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UniqueViolation)
         {
@@ -90,6 +96,11 @@ public class ClientManager
                 return Fail("Невозможно удалить клиента: у него есть активный сеанс");
 
             using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM Sessions WHERE ClientId = @id";
+            command.Parameters.AddWithValue("@id", clientId);
+            if (Convert.ToInt64(command.ExecuteScalar()) > 0)
+                return Fail("Невозможно удалить клиента: сохранена история сеансов и оплат");
+            command.Parameters.Clear();
             command.CommandText = "DELETE FROM Clients WHERE Id = @id";
             command.Parameters.AddWithValue("@id", clientId);
 
@@ -117,9 +128,12 @@ public class ClientManager
                 SELECT Id, FullName, Phone, TotalHours, TotalSpent, DiscountPercent
                 FROM Clients
                 WHERE FullName ILIKE @term OR Phone ILIKE @term
+                   OR (@phonePattern <> '' AND regexp_replace(Phone, '[^0-9]', '', 'g') ~ @phonePattern)
                 ORDER BY FullName
                 """;
-            command.Parameters.AddWithValue("@term", $"%{searchText.Trim()}%");
+            var search = searchText.Trim();
+            command.Parameters.AddWithValue("@term", $"%{search}%");
+            command.Parameters.AddWithValue("@phonePattern", BuildPhoneSearchPattern(search));
         }
 
         var clients = new List<Client>();
@@ -128,6 +142,21 @@ public class ClientManager
             clients.Add(ReadClient(reader));
 
         return clients;
+    }
+
+    internal static string BuildPhoneSearchPattern(string search)
+    {
+        var digits = Client.GetPhoneDigits(search);
+        if (digits.Length > 15)
+            return string.Empty;
+
+        if (digits.Length is >= 2 and <= 11 && (digits[0] is '7' or '8'))
+        {
+            var prefix = $"^[78]?{digits[1..]}[0-9]{{{11 - digits.Length}}}$";
+            return digits.Length == 11 || search[0] == '+' ? prefix : $"{digits}|{prefix}";
+        }
+
+        return digits;
     }
 
     public Client? GetClientById(int clientId)
@@ -208,21 +237,25 @@ public class ClientManager
         return true;
     }
 
+    private static string GetStoredPhone(string phone) =>
+        Client.TryGetRussianPhoneDigits(phone, out var localDigits) ? "7" + localDigits : phone.Trim();
+
     private static bool PhoneExists(NpgsqlConnection connection, string phone, int? excludeClientId)
     {
         using var command = connection.CreateCommand();
-        if (excludeClientId.HasValue)
-        {
-            command.CommandText = "SELECT COUNT(*) FROM Clients WHERE Phone = @phone AND Id <> @id";
-            command.Parameters.AddWithValue("@id", excludeClientId.Value);
-        }
-        else
-        {
-            command.CommandText = "SELECT COUNT(*) FROM Clients WHERE Phone = @phone";
-        }
-
-        command.Parameters.AddWithValue("@phone", phone.Trim());
-        return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        Client.TryGetRussianPhoneDigits(phone, out var localDigits);
+        command.CommandText = """
+            SELECT EXISTS (
+                SELECT 1 FROM Clients
+                WHERE (@id = 0 OR Id <> @id)
+                  AND (Phone = @phone OR (@digits <> '' AND
+                      regexp_replace(Phone, '[^0-9]', '', 'g') IN (@digits, '7' || @digits, '8' || @digits)))
+            )
+            """;
+        command.Parameters.AddWithValue("@id", excludeClientId.GetValueOrDefault());
+        command.Parameters.AddWithValue("@phone", phone);
+        command.Parameters.AddWithValue("@digits", localDigits);
+        return (bool)command.ExecuteScalar()!;
     }
 
     private static bool HasActiveSession(NpgsqlConnection connection, int clientId)

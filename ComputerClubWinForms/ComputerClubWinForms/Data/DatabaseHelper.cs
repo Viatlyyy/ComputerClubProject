@@ -6,11 +6,11 @@ namespace ComputerClubWinForms.Data;
 public class DatabaseHelper
 {
     private const string DefaultConnectionString =
-        "Host=192.168.1.48;Username=st50-4;Password=<ПАРОЛЬ>;Database=ComputerClub";
+        "Host=localhost;Username=postgres;Database=ComputerClub";
 
     public string ConnectionString { get; }
 
-    public DatabaseHelper() : this(DefaultConnectionString)
+    public DatabaseHelper() : this(Environment.GetEnvironmentVariable("COMPUTER_CLUB_CONNECTION_STRING") ?? DefaultConnectionString)
     {
     }
 

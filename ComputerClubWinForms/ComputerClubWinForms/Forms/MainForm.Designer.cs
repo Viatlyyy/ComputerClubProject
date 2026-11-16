@@ -74,9 +74,6 @@ partial class MainForm
         _mainTabControl.Location = new Point(0, 64);
         _mainTabControl.Name = "_mainTabControl";
         _mainTabControl.SelectedIndex = 0;
-        _mainTabControl.ItemSize = new Size(150, 42);
-        _mainTabControl.SizeMode = TabSizeMode.Fixed;
-        _mainTabControl.HotTrack = true;
         _mainTabControl.Size = new Size(1280, 736);
         _mainTabControl.TabIndex = 1;
         _tabClients.Location = new Point(4, 24);
@@ -149,7 +146,7 @@ partial class MainForm
         _appTitleLabel.ForeColor = SystemColors.ControlText;
         _currentUserLabel.ForeColor = SystemColors.ControlText;
         _logoutButton.AccessibleDescription = "Выйти из текущей учетной записи";
-        _mainTabControl.Font = new Font("Segoe UI", 9F);
+        UiTheme.Tabs(_mainTabControl);
         _headerPanel.ResumeLayout(false);
         _headerPanel.PerformLayout();
         _mainTabControl.ResumeLayout(false);

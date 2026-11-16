@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using ComputerClubWinForms.Models;
 
@@ -33,7 +35,16 @@ public partial class ClientEditDialog : Form
         UiTheme.Action(_btnOk, primary: true);
         Text = Client.Id == 0 ? "Добавить клиента" : "Редактировать клиента";
         _txtFullName.Text = Client.FullName;
-        _txtPhone.Text = Client.Phone;
+        if (ComputerClubWinForms.Models.Client.TryGetRussianPhoneDigits(Client.Phone, out var digits))
+            _txtPhone.Text = ClientPhoneTextBox.FormatNumber(digits);
+        else if (!string.IsNullOrWhiteSpace(Client.Phone))
+            _phoneHint.Text = "Введённый ранее номер требуется привести к формату +7.";
+    }
+
+    private void OnPhoneTextChanged(object? sender, EventArgs e)
+    {
+        if (_txtPhone.MaskCompleted)
+            _phoneHint.Text = string.Empty;
     }
 
     private void OnOkClick(object? sender, EventArgs e)
@@ -45,16 +56,59 @@ public partial class ClientEditDialog : Form
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(_txtPhone.Text))
+        if (!_txtPhone.MaskCompleted)
         {
-            MessageBox.Show("Введите телефон клиента", "Проверка", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            _phoneHint.Text = "Введите все 10 цифр номера после +7.";
             _txtPhone.Focus();
             return;
         }
 
         Client.FullName = _txtFullName.Text.Trim();
-        Client.Phone = _txtPhone.Text.Trim();
+        Client.Phone = "7" + _txtPhone.Text;
         DialogResult = DialogResult.OK;
         Close();
+    }
+}
+
+public sealed class ClientPhoneTextBox : MaskedTextBox
+{
+    internal static string FormatNumber(string digits) =>
+        $"+7 ({digits[..3]}) {digits[3..6]}-{digits[6..8]}-{digits[8..10]}";
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if ((keyData == (Keys.Control | Keys.V) || keyData == (Keys.Shift | Keys.Insert)) && TryPasteNumber())
+            return true;
+        return base.ProcessCmdKey(ref msg, keyData);
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        const int pasteMessage = 0x0302; // WM_PASTE
+        if (m.Msg != pasteMessage || !TryPasteNumber())
+            base.WndProc(ref m);
+    }
+
+    private bool TryPasteNumber()
+    {
+        if (ReadOnly)
+            return false;
+        string text;
+        try
+        {
+            text = Clipboard.GetText();
+        }
+        catch (ExternalException)
+        {
+            return false;
+        }
+
+        if (!Client.TryGetRussianPhoneDigits(text, out var digits))
+            return text.Count(char.IsAsciiDigit) >= 10;
+
+        Text = FormatNumber(digits);
+        SelectionStart = Mask.Length;
+        SelectionLength = 0;
+        return true;
     }
 }

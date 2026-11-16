@@ -24,6 +24,7 @@ namespace ComputerClubWinForms.Forms
         public SessionPage()
         {
             InitializeComponent();
+            InitializePaymentControls();
             ArrangePanels();
             EnsureSessionGridColumns();
 
@@ -230,10 +231,9 @@ namespace ComputerClubWinForms.Forms
             var activeTop = _editorPanel.Bottom + gap;
             var mapTop = ClientSize.Height - Padding.Bottom - mapHeight;
             var tablesHeight = Math.Max(2 * minimumTableHeight, mapTop - activeTop - 2 * gap);
-            var activeHeight = tablesHeight / 2;
-            _activeGroup.SetBounds(Padding.Left, activeTop, width, activeHeight);
-            _bookingGroup.SetBounds(Padding.Left, _activeGroup.Bottom + gap, width, tablesHeight - activeHeight);
-            _mapGroup.SetBounds(Padding.Left, _bookingGroup.Bottom + gap, width, mapHeight);
+            if (_sessionTabs is not null)
+                _sessionTabs.SetBounds(Padding.Left, activeTop, width, tablesHeight + gap);
+            _mapGroup.SetBounds(Padding.Left, activeTop + tablesHeight + 2 * gap, width, mapHeight);
             LayoutComputerMapButtons();
         }
 
@@ -270,6 +270,7 @@ namespace ComputerClubWinForms.Forms
         {
             RefreshActiveSessions();
             RefreshBookings();
+            RefreshPaymentLists();
         }
 
         private void SessionTimer_Tick(object? sender, EventArgs e)
@@ -293,6 +294,7 @@ namespace ComputerClubWinForms.Forms
                         SessionStatisticsChanged?.Invoke(this, EventArgs.Empty);
                         _clientStatisticsNeedRefresh = false;
                     }
+                    RefreshPaymentLists();
                     if (!Visible)
                         return;
                     if (expiredFound)
@@ -337,7 +339,7 @@ namespace ComputerClubWinForms.Forms
             }
             if (completedCount > 0)
             {
-                _lastAutoCompletionSummary = $"Автоматически завершено: {completedCount}, сумма: {total:N2} руб.";
+                _lastAutoCompletionSummary = $"Автоматически завершено: {completedCount}, расчёт: {total:N2} руб.";
                 _clientStatisticsNeedRefresh = true;
             }
             var status = hasFailure ? "Не удалось закрыть сеанс, повторяем…" : _lastAutoCompletionSummary;
@@ -688,29 +690,21 @@ namespace ComputerClubWinForms.Forms
                 return;
             }
 
-            var preview = _sessionManager.PreviewCompletion(row.Id);
-            if (preview is null)
-            {
-                ShowResult(false, _sessionManager.LastMessage);
-                return;
-            }
-
-            using var receipt = new ReceiptDialog(preview, confirmMode: true);
-            if (receipt.ShowDialog(this) != DialogResult.OK)
-                return;
-
             var completedSession = _sessionManager.CompleteSession(row.Id);
-            if (completedSession is not null)
-            {
-                using var finalReceipt = new ReceiptDialog(completedSession, confirmMode: false);
-                finalReceipt.ShowDialog(this);
-            }
-            else
+            if (completedSession is null)
             {
                 ShowResult(false, _sessionManager.LastMessage);
+                RefreshAll();
+                return;
             }
 
+            _clientStatisticsNeedRefresh = true;
             RefreshAll();
+            _sessionTabs.SelectedTab = _pendingPage;
+            var pendingRow = _gridPendingPayments.Rows.Cast<DataGridViewRow>()
+                .FirstOrDefault(item => (item.DataBoundItem as PaymentRow)?.Id == completedSession.Id);
+            _gridPendingPayments.ClearSelection();
+            _gridPendingPayments.CurrentCell = pendingRow?.Cells[nameof(PaymentRow.Client)];
         }
 
         private ActiveSessionRow? GetSelectedActiveSessionRow()

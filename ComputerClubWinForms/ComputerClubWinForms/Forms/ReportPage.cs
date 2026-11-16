@@ -85,13 +85,13 @@ public partial class ReportPage : UserControl
         _dgvReport.DataSource = rows;
         if (_dgvReport.Columns[nameof(ReportRow.Date)] is DataGridViewColumn dateColumn)
         {
-            dateColumn.HeaderText = "Дата";
+            dateColumn.HeaderText = "Дата оплаты";
             dateColumn.FillWeight = 110;
             dateColumn.MinimumWidth = 150;
         }
         if (_dgvReport.Columns[nameof(ReportRow.SessionsCount)] is DataGridViewColumn countColumn)
         {
-            countColumn.HeaderText = "Количество сеансов";
+            countColumn.HeaderText = "Оплачено сеансов";
             countColumn.FillWeight = 130;
             countColumn.MinimumWidth = 200;
             countColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;

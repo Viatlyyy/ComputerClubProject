@@ -17,6 +17,7 @@ public class Session
     public decimal OneTimeDiscountPercent { get; set; }
     public decimal PersonalDiscountPercent { get; set; }
     public bool IsCompleted { get; set; }
+    public DateTime? PaidAt { get; set; }
 
     public TimeSpan RemainingTime => PlannedEndTime - DateTime.Now;
 }

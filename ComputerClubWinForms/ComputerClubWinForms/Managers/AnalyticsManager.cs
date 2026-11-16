@@ -26,13 +26,13 @@ public class AnalyticsManager
 
         try
         {
-            var sessions = _sessionManager.GetCompletedSessionsBetweenDates(from, to);
+            var sessions = _sessionManager.GetPaidSessionsBetweenDates(from, to);
             if (sessions.Count == 0)
                 return Fail("За указанный период нет данных");
 
             var rows = sessions
-                .Where(s => s.EndTime.HasValue)
-                .GroupBy(s => s.EndTime!.Value.Date)
+                .Where(s => s.PaidAt.HasValue)
+                .GroupBy(s => s.PaidAt!.Value.Date)
                 .OrderBy(g => g.Key)
                 .Select(g => new ReportDay
                 {

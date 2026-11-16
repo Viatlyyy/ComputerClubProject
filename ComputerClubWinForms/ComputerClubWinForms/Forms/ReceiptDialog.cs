@@ -25,7 +25,7 @@ public partial class ReceiptDialog : Form
     {
         _session = session;
         _confirmMode = confirmMode;
-        Text = _confirmMode ? "Подтверждение оплаты" : "Чек закрытого сеанса";
+        Text = _confirmMode ? "Подтверждение оплаты" : session.PaidAt.HasValue ? "Чек оплаченного сеанса" : "Расчёт к оплате";
         _btnOk.Text = _confirmMode ? "Подтвердить оплату" : "ОК";
         _btnCancel.Visible = _confirmMode;
         var scale = DeviceDpi / 96F;
@@ -64,7 +64,10 @@ public partial class ReceiptDialog : Form
 
         var sb = new StringBuilder();
         sb.AppendLine("КОМПЬЮТЕРНЫЙ КЛУБ");
-        sb.AppendLine("Детализация сеанса");
+        sb.AppendLine($"Сеанс №{session.Id}");
+        sb.AppendLine(session.PaidAt.HasValue
+            ? $"ОПЛАЧЕНО: {session.PaidAt:dd.MM.yyyy HH:mm:ss}"
+            : "ОЖИДАЕТ ОПЛАТЫ");
         sb.AppendLine(new string('-', 42));
         sb.AppendLine($"Клиент:          {session.ClientName}");
         sb.AppendLine($"Компьютер:       №{session.ComputerNumber}");

@@ -12,7 +12,8 @@ partial class ClientEditDialog
     private Label _fullNameLabel = null!;
     private Label _phoneLabel = null!;
     private TextBox _txtFullName = null!;
-    private TextBox _txtPhone = null!;
+    private MaskedTextBox _txtPhone = null!;
+    private Label _phoneHint = null!;
     private Button _btnOk = null!;
     private Button _btnCancel = null!;
 
@@ -21,7 +22,8 @@ partial class ClientEditDialog
         _fullNameLabel = new Label();
         _phoneLabel = new Label();
         _txtFullName = new TextBox();
-        _txtPhone = new TextBox();
+        _txtPhone = new ClientPhoneTextBox();
+        _phoneHint = new Label();
         _btnOk = new Button();
         _btnCancel = new Button();
         SuspendLayout();
@@ -47,10 +49,20 @@ partial class ClientEditDialog
         _phoneLabel.Text = "Телефон";
 
         _txtPhone.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+        _txtPhone.AsciiOnly = true;
+        _txtPhone.Culture = System.Globalization.CultureInfo.InvariantCulture;
         _txtPhone.Location = new Point(24, 132);
+        _txtPhone.Mask = "+7 (000) 000-00-00";
         _txtPhone.Name = "_txtPhone";
+        _txtPhone.RejectInputOnFirstFailure = true;
         _txtPhone.Size = new Size(472, 27);
         _txtPhone.TabIndex = 3;
+        _txtPhone.TextMaskFormat = MaskFormat.ExcludePromptAndLiterals;
+        _txtPhone.TextChanged += OnPhoneTextChanged;
+
+        _phoneHint.AutoSize = true;
+        _phoneHint.Location = new Point(24, 164);
+        _phoneHint.Name = "_phoneHint";
 
         _btnOk.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
         _btnOk.Location = new Point(224, 208);
@@ -82,6 +94,7 @@ partial class ClientEditDialog
             _txtFullName,
             _phoneLabel,
             _txtPhone,
+            _phoneHint,
             _btnOk,
             _btnCancel
         });

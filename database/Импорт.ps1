@@ -10,13 +10,15 @@ param(
 $ErrorActionPreference = 'Stop'
 $backupPath = Join-Path $PSScriptRoot 'ComputerClub.backup'
 $sqlPath = Join-Path $PSScriptRoot 'ComputerClub_full.sql'
+$paymentsPath = Join-Path $PSScriptRoot '001_payments.sql'
 $filePath = if ($Format -eq 'backup') { $backupPath } else { $sqlPath }
 if (!(Test-Path -LiteralPath $filePath -PathType Leaf)) { throw 'Файл базы не найден.' }
+if (!(Test-Path -LiteralPath $paymentsPath -PathType Leaf)) { throw 'Файл обновления для истории чеков не найден.' }
 $createdb = Join-Path $PgBin 'createdb.exe'
 $pgRestore = Join-Path $PgBin 'pg_restore.exe'
 $psql = Join-Path $PgBin 'psql.exe'
 $importer = if ($Format -eq 'backup') { $pgRestore } else { $psql }
-foreach ($tool in @($createdb, $importer)) {
+foreach ($tool in @($createdb, $importer, $psql)) {
     if (!(Test-Path -LiteralPath $tool -PathType Leaf)) { throw "Утилита PostgreSQL не найдена: $tool" }
 }
 $serverArgs = @("--host=$Server", "--port=$Port", "--username=$User")
@@ -30,5 +32,9 @@ if ($Format -eq 'backup') {
 }
 if ($LASTEXITCODE -ne 0) {
     throw "Импорт не удался. Проверьте ошибку выше; новая база $Database оставлена для проверки."
+}
+& $psql -X @targetArgs --set=ON_ERROR_STOP=1 "--file=$paymentsPath"
+if ($LASTEXITCODE -ne 0) {
+    throw "База $Database восстановлена, но обновление для истории чеков не применилось."
 }
 Write-Output "Импорт завершён: $Database. Назначьте локальные пароли приложения перед входом."

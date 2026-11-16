@@ -300,9 +300,14 @@ public class SessionManager
                 return null;
             }
 
+            using (var clientLock = new NpgsqlCommand("SELECT Id FROM Clients WHERE Id = @id FOR UPDATE", connection, transaction))
+            {
+                clientLock.Parameters.AddWithValue("@id", session.ClientId);
+                clientLock.ExecuteScalar();
+            }
             var completedSession = PrepareCompletedSession(session,
                 expiryCutoff.HasValue ? session.PlannedEndTime : GetCompletionTime(session));
-            var durationMinutes = ToMinutes(completedSession.Duration);
+            var durationMinutes = completedSession.Duration.TotalMinutes;
             var hours = durationMinutes / 60d;
             var clientBefore = _clientManager.GetClientById(connection, transaction, session.ClientId);
             var newDiscount = _tariffManager.GetPersonalDiscount((clientBefore?.TotalHours ?? 0d) + hours);
@@ -317,9 +322,11 @@ public class SessionManager
                     TariffPerHour = @tariff,
                     OneTimeDiscountPercent = @oneTimeDiscount,
                     PersonalDiscountPercent = @personalDiscount,
+                    ReceiptClientName = @clientName,
                     IsCompleted = TRUE
                 WHERE Id = @id AND IsCompleted = FALSE
                 """;
+            command.Parameters.AddWithValue("@clientName", completedSession.ClientName);
             command.Parameters.AddWithValue("@endTime", ToDbDate(completedSession.EndTime!.Value));
             command.Parameters.AddWithValue("@durationMinutes", durationMinutes);
             command.Parameters.AddWithValue("@totalCost", completedSession.TotalCost);
@@ -333,7 +340,7 @@ public class SessionManager
                 return null;
             }
 
-            if (!_clientManager.UpdateClientStats(session.ClientId, hours, completedSession.TotalCost, newDiscount, connection, transaction))
+            if (!_clientManager.UpdateClientStats(session.ClientId, hours, 0m, newDiscount, connection, transaction))
             {
                 transaction.Rollback();
                 LastMessage = _clientManager.LastMessage;
@@ -341,7 +348,7 @@ public class SessionManager
             }
 
             transaction.Commit();
-            LastMessage = "Сеанс закрыт, выручка учтена";
+            LastMessage = "Сеанс завершён и ожидает оплаты";
             return completedSession;
         }
         catch (Exception ex)
@@ -356,9 +363,9 @@ public class SessionManager
         using var connection = _db.CreateConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT s.Id, s.ClientId, c.FullName, s.ComputerNumber, s.StartTime, s.PlannedEndTime,
+            SELECT s.Id, s.ClientId, COALESCE(s.ReceiptClientName, c.FullName), s.ComputerNumber, s.StartTime, s.PlannedEndTime,
                    s.EndTime, s.DurationMinutes, s.TotalCost, s.TariffPerHour,
-                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted
+                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted, s.PaidAt
             FROM Sessions s
             JOIN Clients c ON c.Id = s.ClientId
             WHERE s.IsCompleted = FALSE
@@ -398,9 +405,9 @@ public class SessionManager
         using var connection = _db.CreateConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT s.Id, s.ClientId, c.FullName, s.ComputerNumber, s.StartTime, s.PlannedEndTime,
+            SELECT s.Id, s.ClientId, COALESCE(s.ReceiptClientName, c.FullName), s.ComputerNumber, s.StartTime, s.PlannedEndTime,
                    s.EndTime, s.DurationMinutes, s.TotalCost, s.TariffPerHour,
-                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted
+                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted, s.PaidAt
             FROM Sessions s
             JOIN Clients c ON c.Id = s.ClientId
             WHERE s.IsCompleted = TRUE AND s.EndTime >= @from AND s.EndTime <= @to
@@ -415,6 +422,108 @@ public class SessionManager
             sessions.Add(ReadSession(reader));
 
         return sessions;
+    }
+
+
+    public Session? GetSessionById(int sessionId)
+    {
+        using var connection = _db.CreateConnection();
+        return GetSessionById(connection, null, sessionId);
+    }
+
+    public Session? ConfirmPayment(int sessionId)
+    {
+        try
+        {
+            using var connection = _db.CreateConnection();
+            using var transaction = connection.BeginTransaction();
+            using (var timeout = new NpgsqlCommand("SET LOCAL lock_timeout = '1s'", connection, transaction))
+                timeout.ExecuteNonQuery();
+            var session = GetSessionById(connection, transaction, sessionId, forUpdate: true);
+            if (session is null || !session.IsCompleted)
+            {
+                LastMessage = "Оплатить можно только завершённый сеанс";
+                return null;
+            }
+            if (session.PaidAt.HasValue)
+            {
+                LastMessage = "Сеанс уже оплачен";
+                return session;
+            }
+            using var command = connection.CreateCommand();
+            command.Transaction = transaction;
+            command.CommandText = """
+                UPDATE Sessions SET PaidAt = LOCALTIMESTAMP
+                WHERE Id = @id AND IsCompleted = TRUE AND PaidAt IS NULL
+                RETURNING PaidAt
+                """;
+            command.Parameters.AddWithValue("@id", sessionId);
+            session.PaidAt = DateTime.SpecifyKind((DateTime)command.ExecuteScalar()!, DateTimeKind.Unspecified);
+            command.Parameters.Clear();
+            command.CommandText = "UPDATE Clients SET TotalSpent = TotalSpent + @amount WHERE Id = @clientId";
+            command.Parameters.AddWithValue("@amount", session.TotalCost);
+            command.Parameters.AddWithValue("@clientId", session.ClientId);
+            if (command.ExecuteNonQuery() != 1)
+                throw new InvalidOperationException("Клиент для оплаты не найден");
+            transaction.Commit();
+            LastMessage = "Оплата подтверждена";
+            return session;
+        }
+        catch (Exception ex)
+        {
+            LastMessage = "Не удалось сохранить оплату: " + ex.Message;
+            return null;
+        }
+    }
+
+    public List<Session> GetSessionHistory(DateTime from, DateTime to, bool onlyUnpaid, string searchText = "")
+    {
+        using var connection = _db.CreateConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.Id, s.ClientId, COALESCE(s.ReceiptClientName, c.FullName), s.ComputerNumber,
+                   s.StartTime, s.PlannedEndTime, s.EndTime, s.DurationMinutes, s.TotalCost, s.TariffPerHour,
+                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted, s.PaidAt
+            FROM Sessions s JOIN Clients c ON c.Id = s.ClientId
+            WHERE s.IsCompleted = TRUE
+              AND ((@unpaid AND s.PaidAt IS NULL)
+                OR (NOT @unpaid AND s.EndTime >= @from AND s.EndTime < @to))
+              AND (@search = '' OR COALESCE(s.ReceiptClientName, c.FullName) ILIKE @term
+                OR c.Phone ILIKE @term OR s.Id::text = @search
+                OR (@phonePattern <> '' AND regexp_replace(c.Phone, '[^0-9]', '', 'g') ~ @phonePattern))
+            ORDER BY s.EndTime DESC, s.Id DESC
+            """;
+        command.Parameters.AddWithValue("@unpaid", onlyUnpaid);
+        command.Parameters.AddWithValue("@from", ToDbDate(from.Date));
+        command.Parameters.AddWithValue("@to", ToDbDate(to.Date.AddDays(1)));
+        var search = searchText.Trim();
+        command.Parameters.AddWithValue("@search", search);
+        command.Parameters.AddWithValue("@term", $"%{search}%");
+        command.Parameters.AddWithValue("@phonePattern", ClientManager.BuildPhoneSearchPattern(search));
+        var result = new List<Session>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) result.Add(ReadSession(reader));
+        return result;
+    }
+
+    public List<Session> GetPaidSessionsBetweenDates(DateTime from, DateTime to)
+    {
+        using var connection = _db.CreateConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT s.Id, s.ClientId, COALESCE(s.ReceiptClientName, c.FullName), s.ComputerNumber,
+                   s.StartTime, s.PlannedEndTime, s.EndTime, s.DurationMinutes, s.TotalCost, s.TariffPerHour,
+                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted, s.PaidAt
+            FROM Sessions s JOIN Clients c ON c.Id = s.ClientId
+            WHERE s.IsCompleted = TRUE AND s.PaidAt >= @from AND s.PaidAt <= @to
+            ORDER BY s.PaidAt, s.Id
+            """;
+        command.Parameters.AddWithValue("@from", ToDbDate(from));
+        command.Parameters.AddWithValue("@to", ToDbDate(to));
+        var result = new List<Session>();
+        using var reader = command.ExecuteReader();
+        while (reader.Read()) result.Add(ReadSession(reader));
+        return result;
     }
 
     private static DateTime GetCompletionTime(Session session)
@@ -568,9 +677,9 @@ public class SessionManager
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            SELECT s.Id, s.ClientId, c.FullName, s.ComputerNumber, s.StartTime, s.PlannedEndTime,
+            SELECT s.Id, s.ClientId, COALESCE(s.ReceiptClientName, c.FullName), s.ComputerNumber, s.StartTime, s.PlannedEndTime,
                    s.EndTime, s.DurationMinutes, s.TotalCost, s.TariffPerHour,
-                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted
+                   s.OneTimeDiscountPercent, s.PersonalDiscountPercent, s.IsCompleted, s.PaidAt
             FROM Sessions s
             JOIN Clients c ON c.Id = s.ClientId
             WHERE s.Id = @id
@@ -606,12 +715,13 @@ public class SessionManager
             StartTime = ReadDate(reader, 4),
             PlannedEndTime = ReadDate(reader, 5),
             EndTime = reader.IsDBNull(6) ? null : ReadDate(reader, 6),
-            Duration = TimeSpan.FromMinutes(Convert.ToInt32(reader.GetValue(7), CultureInfo.InvariantCulture)),
+            Duration = TimeSpan.FromMinutes(Convert.ToDouble(reader.GetValue(7), CultureInfo.InvariantCulture)),
             TotalCost = Convert.ToDecimal(reader.GetValue(8), CultureInfo.InvariantCulture),
             TariffPerHour = Convert.ToDecimal(reader.GetValue(9), CultureInfo.InvariantCulture),
             OneTimeDiscountPercent = Convert.ToDecimal(reader.GetValue(10), CultureInfo.InvariantCulture),
             PersonalDiscountPercent = Convert.ToDecimal(reader.GetValue(11), CultureInfo.InvariantCulture),
-            IsCompleted = reader.GetBoolean(12)
+            IsCompleted = reader.GetBoolean(12),
+            PaidAt = reader.IsDBNull(13) ? null : ReadDate(reader, 13)
         };
     }
 

@@ -66,6 +66,7 @@ public partial class MainForm : Form
         var tab = new TabPage(title)
         {
             BackColor = UiTheme.Background,
+            Font = UiTheme.BodyFont,
             Padding = new Padding(0)
         };
         tab.Controls.Add(content);

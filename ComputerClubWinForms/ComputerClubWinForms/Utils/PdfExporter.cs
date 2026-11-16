@@ -72,8 +72,8 @@ public static class PdfExporter
             graphics.DrawRectangle(pen, xDate, y, tableWidth, rowHeight);
             graphics.DrawLine(pen, xSessions - 25, y, xSessions - 25, y + rowHeight);
             graphics.DrawLine(pen, xRevenue - 25, y, xRevenue - 25, y + rowHeight);
-            graphics.DrawString("Дата", headerFont, brush, xDate + 12, y + 9);
-            graphics.DrawString("Количество сеансов", headerFont, brush, xSessions, y + 9);
+            graphics.DrawString("Дата оплаты", headerFont, brush, xDate + 12, y + 9);
+            graphics.DrawString("Оплачено сеансов", headerFont, brush, xSessions, y + 9);
             graphics.DrawString("Выручка, руб.", headerFont, brush, xRevenue, y + 9);
             y += rowHeight;
 
