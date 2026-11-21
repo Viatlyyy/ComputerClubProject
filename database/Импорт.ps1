@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory)][ValidatePattern('\A[a-z][a-z0-9_]{0,62}\z')][string]$Database,
+    [ValidatePattern('\A[A-Za-z_][A-Za-z0-9_]{0,62}\z')][string]$Database = 'computer_club_demo',
     [ValidateSet('backup','sql')][string]$Format = 'backup',
     [string]$PgBin = 'C:\Program Files\PostgreSQL\18\bin',
     [string]$Server = 'localhost',
@@ -37,4 +37,24 @@ if ($LASTEXITCODE -ne 0) {
 if ($LASTEXITCODE -ne 0) {
     throw "База $Database восстановлена, но обновление для истории чеков не применилось."
 }
-Write-Output "Импорт завершён: $Database. Назначьте локальные пароли приложения перед входом."
+$check = @'
+DO $check$
+DECLARE item text;
+BEGIN
+    FOREACH item IN ARRAY ARRAY['users','clients','computers','bookings','sessions','settings'] LOOP
+        IF to_regclass('public.' || item) IS NULL THEN
+            RAISE EXCEPTION 'Missing required table: %', item;
+        END IF;
+    END LOOP;
+    PERFORM paidat, receiptclientname, durationminutes FROM public.sessions LIMIT 0;
+    IF NOT EXISTS (SELECT 1 FROM public.users WHERE username = 'admin' AND password = 'admin123' AND role = 'admin') THEN
+        RAISE EXCEPTION 'Demo administrator is missing';
+    END IF;
+END $check$;
+'@
+& $psql -X @targetArgs --set=ON_ERROR_STOP=1 --command=$check
+if ($LASTEXITCODE -ne 0) { throw "Проверка базы $Database не пройдена. Подробности выше." }
+Write-Output "Импорт и проверка таблиц завершены. База: $Database"
+Write-Output "Вход в учебное приложение: admin / admin123 или manager / manager123."
+Write-Output "Строка подключения: Host=$Server;Port=$Port;Username=$User;Password=<пароль PostgreSQL>;Database=$Database"
+Write-Output "Укажите именно эту базу в COMPUTER_CLUB_CONNECTION_STRING или DefaultConnectionString и перезапустите приложение."

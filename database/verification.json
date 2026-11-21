@@ -1,37 +1,20 @@
 {
+  "created": "2026-11-21",
   "anonymized": true,
+  "demo_accounts": true,
   "restored_from_both_formats": true,
-  "schema_matches": true,
-  "sequences_match": true,
-  "passwords_require_local_setup": true,
-  "tables": [
-    {
-      "table": "bookings",
-      "rows": 5
-    },
-    {
-      "table": "clients",
-      "rows": 14
-    },
-    {
-      "table": "computers",
-      "rows": 12
-    },
-    {
-      "table": "sessions",
-      "rows": 53
-    },
-    {
-      "table": "settings",
-      "rows": 1
-    },
-    {
-      "table": "users",
-      "rows": 2
-    }
-  ],
+  "application_login_verified": true,
+  "source_unchanged": true,
+  "tables": {
+    "users": 4,
+    "clients": 15,
+    "computers": 12,
+    "bookings": 6,
+    "sessions": 57,
+    "settings": 1
+  },
   "sha256": {
-    "ComputerClub.backup": "3CBA8E5FE21CEC160B8246CDA5AF55CFDFA61EC7745074065555047101E5E9CF",
-    "ComputerClub_full.sql": "7EAEABCF78DD420C4DC4608F246FEB75D4C1412487ED089DA84F234A4979AF3A"
+    "ComputerClub.backup": "51bc695cf75a3c5c7dc0d16bb3edc8a50c076df49672950edeab18f2c9c52600",
+    "ComputerClub_full.sql": "ac6f25270ee8d6a90b991880e70baccb80bc39cc21362f9f1fdd45e34d82041a"
   }
 }
