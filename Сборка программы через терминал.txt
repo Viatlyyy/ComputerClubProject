@@ -1,0 +1,56 @@
+Сборка компьютерного клуба через терминал
+
+1. Подготовьте инструменты
+Установите .NET 8 SDK для Windows x64.
+Откройте PowerShell и выполните:
+
+dotnet --version
+
+Должен появиться номер установленного SDK. После установки SDK откройте терминал заново.
+
+2. Откройте нужную папку
+В скачанном репозитории откройте папку ComputerClubWinForms, где лежит ComputerClubWinForms.sln.
+Нажмите на адресную строку Проводника, введите powershell и нажмите Enter.
+
+Если терминал уже открыт в корне репозитория, рядом с этим текстовым файлом, выполните:
+
+Set-Location ".\ComputerClubWinForms"
+
+Проверьте расположение проекта:
+
+Test-Path ".\ComputerClubWinForms.csproj"
+Test-Path ".\ComputerClubWinForms\ComputerClubWinForms.csproj"
+
+Для структуры этого репозитория первая проверка вернёт False, вторая — True.
+Следующую команду запускайте из папки с ComputerClubWinForms.sln.
+
+3. Соберите один EXE со встроенным .NET
+Скопируйте следующую команду целиком в одну строку:
+
+dotnet publish ".\ComputerClubWinForms\ComputerClubWinForms.csproj" -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o ".\ГотоваяПрограмма"
+
+При первой сборке потребуется интернет для загрузки пакетов.
+Дождитесь успешного завершения.
+
+4. Откройте результат
+
+explorer ".\ГотоваяПрограмма"
+
+В этой папке находится ComputerClubWinForms.exe.
+Это самодостаточная сборка для Windows x64, её можно перенести на другой компьютер одним EXE.
+
+Для запуска из того же терминала:
+
+& ".\ГотоваяПрограмма\ComputerClubWinForms.exe"
+
+5. Настройки подключения
+Строка подключения берётся из ComputerClubWinForms\Data\DatabaseHelper.cs на момент сборки.
+После изменения строки подключения повторите команду dotnet publish.
+Компьютеру, на котором запускается программа, нужен доступ к указанному серверу PostgreSQL.
+
+Если появилась ошибка MSB1009 «файл проекта не существует», проверьте текущую папку:
+
+Get-Location
+Get-ChildItem
+
+Перейдите в папку, где лежит ComputerClubWinForms.sln, и повторите команду.
