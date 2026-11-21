@@ -24,15 +24,11 @@
 </ol>
 <p>Текущий дамп уже содержит поля оплаты и чеков. Файл 001_payments.sql нужен при обновлении старой базы, а также повторно выполняется скриптом импорта для проверки совместимости.</p>
 <h2>3. Подключение приложения</h2>
+<p>В проекте задано подключение к серверу 192.168.1.48, роль Admin, база ComputerClub3 по согласованным параметрам. Для работы с этим сервером требуется доступ к его локальной сети. DefaultConnectionString используется при обычном запуске приложения.</p>
 <p>В строке подключения укажите имя именно восстановленной базы. Для примера выше это computer_club_demo. Ошибка 42P01 «отношение users не существует» означает, что приложение не видит таблицу в выбранной базе или схеме. Проверьте сервер, порт и Database, затем наличие шести таблиц в public.</p>
 <p>В Visual Studio откройте ComputerClubWinForms/ComputerClubWinForms/Data/DatabaseHelper.cs и задайте DefaultConnectionString:</p>
 <pre>"Host=localhost;Port=5432;Username=postgres;Password=ваш_пароль;Database=computer_club_demo";</pre>
-<p>Укажите пароль PostgreSQL со своего компьютера. Если импортировали в ComputerClubUp, задайте Database=ComputerClubUp. Пересоберите и запустите проект. Учтите, что установленная переменная COMPUTER_CLUB_CONNECTION_STRING имеет приоритет над DefaultConnectionString.</p>
-<p>Альтернативно задайте полную строку подключения в PowerShell 7 и запустите из того же окна:</p>
-<pre>$env:COMPUTER_CLUB_CONNECTION_STRING = Read-Host 'Строка подключения PostgreSQL' -MaskInput
-Set-Location ..
-dotnet run --project .\ComputerClubWinForms\ComputerClubWinForms\ComputerClubWinForms.csproj
-Remove-Item Env:COMPUTER_CLUB_CONNECTION_STRING</pre>
+<p>Укажите пароль PostgreSQL со своего компьютера. Если импортировали в ComputerClubUp, задайте Database=ComputerClubUp. Пересоберите и запустите проект.</p>
 <h2>4. Вход</h2>
 <p>Администратор — логин <code>admin</code>, пароль <code>admin123</code>. Сотрудник — логин <code>manager</code>, пароль <code>manager123</code>. Это опубликованные учебные аккаунты для демонстрации. При использовании базы для реальной работы назначьте собственные пароли в users.</p>
 <p>В отчётах и истории выберите период сохранённых записей, например октябрь–ноябрь 2026 года. Сеанс по завершении переходит в «Ожидают оплаты», после подтверждения деньги учитываются в отчёте по дате оплаты. Чек открывается из истории.</p>
